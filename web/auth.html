@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Authentication Redirect</title>
+</head>
+<body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #ffffff; color: #333333;">
+  <div style="text-align: center;">
+    <p style="font-size: 1.1em; font-weight: 500; margin-bottom: 8px;">Connexion réussie</p>
+    <p style="font-size: 0.9em; color: #666666; margin: 0;">Fermeture de la fenêtre...</p>
+  </div>
+
+  <script>
+    var currentUrl = window.location.href;
+    var message = { 'flutter-web-auth-2': currentUrl };
+    
+    // 1. Envoi standard via postMessage (si disponible)
+    if (window.opener) {
+      window.opener.postMessage(message, "*");
+    } else if (window.parent && window.parent !== window) {
+      window.parent.postMessage(message, "*");
+    }
+    
+    // 2. Relais de secours via BroadcastChannel
+    try {
+      var channel = new BroadcastChannel('flutter-web-auth-2-channel');
+      channel.postMessage(currentUrl);
+      channel.close();
+    } catch (e) {
+      console.error("[Auth] Échec BroadcastChannel :", e);
+    }
+    
+    // Fermeture rapide du popup
+    setTimeout(function () { window.close(); }, 150);
+  </script>
+</body>
+</html>
