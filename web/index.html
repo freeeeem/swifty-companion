@@ -38,7 +38,6 @@
     try {
       const channel = new BroadcastChannel('flutter-web-auth-2-channel');
       channel.onmessage = function (event) {
-        console.log("[Parent] Redirection reçue via BroadcastChannel :", event.data);
         window.postMessage({ 'flutter-web-auth-2': event.data }, window.location.origin);
       };
     } catch (e) {
