@@ -64,7 +64,6 @@ flutter:
 
   assets:
     - assets/
-    - .env
   fonts:
     - family: Arial
       fonts:
