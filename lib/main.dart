@@ -6,12 +6,23 @@ import 'login.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
+  
+  try {
+    await dotenv.load(fileName: ".env");
+    debugPrint("Dotenv loaded successfully.");
+  } catch (e) {
+    debugPrint("ERROR loading .env file: $e");
+  }
 
-  final prefs = await SharedPreferences.getInstance();
-
-  final String? accessToken = prefs.getString('access_token');
-  final bool isLoggedIn = accessToken != null;
+  bool isLoggedIn = false;
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final String? accessToken = prefs.getString('access_token');
+    isLoggedIn = accessToken != null;
+    debugPrint("SharedPreferences loaded. isLoggedIn: $isLoggedIn");
+  } catch (e) {
+    debugPrint("ERROR loading SharedPreferences: $e");
+  }
 
   runApp(MyApp(isLoggedIn: isLoggedIn));
 }

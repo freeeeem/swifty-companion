@@ -63,13 +63,11 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [ 
+                  children: [
                     // Logo 42
-                    Center(
-                      child: Image.asset('assets/logo.png', height: 200),
-                    ),
+                    Center(child: Image.asset('assets/logo.png', height: 200)),
                     const SizedBox(height: 0),
-  
+
                     // Titres du compagnon
                     const Text(
                       'LITTLE 42 COMPANION',
@@ -85,67 +83,67 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 8),
                     Text(
                       'Consultez vos infos de l\'Intra 42 en un coup d\'œil',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Arial',
-                    ),
-                  ),
-                  const SizedBox(height: 64),
-
-                  // Bouton "Se connecter avec 42"
-                  SizedBox(
-                    width: 242,
-                    height: 66,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _loginWith42,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF0F172A),
-                        disabledBackgroundColor: const Color(0x4DFFFFFF),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16.0),
-                        ),
-                        elevation: 4,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Arial',
                       ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Color(0xFF0F172A),
-                                ),
-                              ),
-                            )
-                          : const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.login_rounded),
-                                SizedBox(width: 10),
-                                Text(
-                                  'Se connecter avec 42',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
-                                    fontFamily: 'Arial',
+                    ),
+                    const SizedBox(height: 64),
+
+                    // Bouton "Se connecter avec 42"
+                    SizedBox(
+                      width: 242,
+                      height: 66,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _loginWith42,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF0F172A),
+                          disabledBackgroundColor: const Color(0x4DFFFFFF),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16.0),
+                          ),
+                          elevation: 4,
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Color(0xFF0F172A),
                                   ),
                                 ),
-                              ],
-                            ),
+                              )
+                            : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.login_rounded),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    'Se connecter avec 42',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
+                                      fontFamily: 'Arial',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

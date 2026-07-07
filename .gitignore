@@ -45,3 +45,10 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 .vscode/settings.json
+.metadata
+
+# Sync conflict files (iCloud, Dropbox, etc.)
+* 2.*
+* [0-9].*
+* (Conflict)*
+* conflicted copy*
