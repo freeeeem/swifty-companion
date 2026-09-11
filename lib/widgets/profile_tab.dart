@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/user_profile.dart';
+import '../theme.dart';
 import 'profile_card.dart';
 
 class ProfileTab extends StatelessWidget {
@@ -23,9 +24,7 @@ class ProfileTab extends StatelessWidget {
       return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 120.0),
-          child: CircularProgressIndicator(
-            color: Color(0xFF00BABC),
-          ),
+          child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
     }
@@ -36,37 +35,57 @@ class ProfileTab extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const SizedBox(height: 40),
-            const Icon(
-              Icons.error_outline,
-              color: Colors.red,
-              size: 48,
+            Container(
+              padding: const EdgeInsets.all(22),
+              decoration: const BoxDecoration(
+                color: AppColors.dangerSoft,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                color: AppColors.danger,
+                size: 44,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Text(
-              error!,
-              textAlign: TextAlign.center,
+              "Une erreur est survenue",
               style: GoogleFonts.roboto(
-                color: Colors.red,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: AppColors.dark,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Text(
+                error!,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.roboto(
+                  color: AppColors.muted,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
               ),
             ),
             const SizedBox(height: 24),
-            ElevatedButton(
+            ElevatedButton.icon(
               onPressed: onRetry,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0F172A),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(14),
                 ),
+                elevation: 0,
               ),
-              child: Text(
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: Text(
                 "Réessayer",
-                style: GoogleFonts.roboto(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: GoogleFonts.roboto(fontWeight: FontWeight.w600),
               ),
             ),
           ],

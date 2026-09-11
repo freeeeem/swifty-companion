@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
 import 'home.dart';
+import 'theme.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -9,8 +10,31 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends State<LoginPage>
+    with SingleTickerProviderStateMixin {
   bool _isLoading = false;
+  late final AnimationController _fadeController;
+  late final Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOutCubic,
+    );
+    _fadeController.forward();
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    super.dispose();
+  }
 
   void _loginWith42() async {
     setState(() {
@@ -33,7 +57,7 @@ class _LoginPageState extends State<LoginPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Échec de la connexion'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.danger,
           ),
         );
       }
@@ -44,106 +68,164 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color.fromARGB(255, 255, 255, 255),
-              Color.fromARGB(255, 255, 255, 255),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: SizedBox(
-                width: double.infinity,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Logo 42
-                    Center(child: Image.asset('assets/logo.png', height: 200)),
-                    const SizedBox(height: 0),
-
-                    // Titres du compagnon
-                    const Text(
-                      'LITTLE 42 COMPANION',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2.0,
-                        fontFamily: 'Arial',
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Consultez vos infos de l\'Intra 42 en un coup d\'œil',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Arial',
-                      ),
-                    ),
-                    const SizedBox(height: 64),
-
-                    // Bouton "Se connecter avec 42"
-                    SizedBox(
-                      width: 242,
-                      height: 66,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _loginWith42,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF0F172A),
-                          disabledBackgroundColor: const Color(0x4DFFFFFF),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16.0),
+        decoration: const BoxDecoration(gradient: AppColors.loginBackground),
+        child: Stack(
+          children: [
+            // Texture : grille de points subtile
+            const Positioned.fill(
+              child: CustomPaint(painter: _DotGridPainter()),
+            ),
+            SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Logo 42 dans une carte de verre
+                        Container(
+                          padding: const EdgeInsets.all(28),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.10),
+                            ),
                           ),
-                          elevation: 4,
+                          child: Image.asset(
+                            'assets/logo.png',
+                            height: 110,
+                            color: Colors.white,
+                            colorBlendMode: BlendMode.srcIn,
+                          ),
                         ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Color(0xFF0F172A),
-                                  ),
+                        const SizedBox(height: 40),
+
+                        // Titre
+                        Text(
+                          'LITTLE 42 COMPANION',
+                          textAlign: TextAlign.center,
+                          style: AppText.mono(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 4.0,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          'Consultez vos infos de l\'Intra 42\nen un coup d\'œil',
+                          textAlign: TextAlign.center,
+                          style: AppText.body(
+                            color: Colors.white.withValues(alpha: 0.60),
+                            fontSize: 15,
+                            height: 1.55,
+                          ),
+                        ),
+                        const SizedBox(height: 56),
+
+                        // Bouton "Se connecter avec 42"
+                        SizedBox(
+                          width: 260,
+                          height: 56,
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color:
+                                      AppColors.primary.withValues(alpha: 0.30),
+                                  blurRadius: 22,
+                                  offset: const Offset(0, 8),
                                 ),
-                              )
-                            : const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.login_rounded),
-                                  SizedBox(width: 10),
-                                  Text(
-                                    'Se connecter avec 42',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.5,
-                                      fontFamily: 'Arial',
-                                    ),
-                                  ),
-                                ],
+                              ],
+                            ),
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _loginWith42,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor:
+                                    AppColors.primary.withValues(alpha: 0.5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12.0),
+                                ),
+                                elevation: 0,
                               ),
-                      ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 22,
+                                      width: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          Colors.white,
+                                        ),
+                                      ),
+                                    )
+                                  : Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(Icons.login_rounded,
+                                            size: 19),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          'Se connecter avec 42',
+                                          style: AppText.body(
+                                            fontSize: 15.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        Text(
+                          'authentification via intra42',
+                          style: AppText.mono(
+                            fontSize: 11,
+                            color: Colors.white.withValues(alpha: 0.30),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
+}
+
+/// Grille de points discrète pour donner de la texture au fond sombre.
+class _DotGridPainter extends CustomPainter {
+  const _DotGridPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const spacing = 26.0;
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.045)
+      ..style = PaintingStyle.fill;
+
+    for (double x = 0; x < size.width; x += spacing) {
+      for (double y = 0; y < size.height; y += spacing) {
+        canvas.drawCircle(Offset(x, y), 1.0, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -37,9 +37,9 @@ dependencies:
   flutter_svg: ^2.0.10
   shared_preferences: ^2.2.0  # Pour la persistance des données
   http: ^1.1.0                # Pour appeler l'API 42
-  flutter_web_auth_2: ^3.0.0
-  flutter_dotenv: ^5.1.0
-  google_fonts: ^6.2.0
+  flutter_web_auth_2: ^5.1.0
+  flutter_dotenv: ^6.0.1
+  google_fonts: ^8.2.1
 
 dev_dependencies:
   flutter_test:

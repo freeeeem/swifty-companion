@@ -1,11 +1,15 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../theme.dart';
 
 class SkillsRadarChart extends StatelessWidget {
   final List<dynamic> skills;
 
-  const SkillsRadarChart({super.key, required this.skills});
+  /// Si vrai, le radar remplit la hauteur disponible (mode côte à côte avec
+  /// IntrinsicHeight). Sinon, il est dimensionné sur la largeur disponible.
+  final bool expand;
+
+  const SkillsRadarChart({super.key, required this.skills, this.expand = false});
 
   @override
   Widget build(BuildContext context) {
@@ -17,40 +21,24 @@ class SkillsRadarChart extends StatelessWidget {
     }).toList();
 
     // Trier par niveau décroissant et prendre les 6 principales compétences
-    parsedSkills.sort((a, b) => (b['level'] as double).compareTo(a['level'] as double));
+    parsedSkills
+        .sort((a, b) => (b['level'] as double).compareTo(a['level'] as double));
     final displaySkills = parsedSkills.take(6).toList();
 
     // Si on a moins de 3 compétences, un radar chart n'est pas très lisible
     if (displaySkills.length < 3) {
       return Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+        decoration: AppCard.decoration(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "Compétences",
-              style: GoogleFonts.roboto(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: const Color(0xFF0F172A),
-              ),
-            ),
+            Text("Compétences", style: AppText.heading(fontSize: 16)),
             const SizedBox(height: 12),
             Text(
               "Pas assez de données pour afficher l'arbre.",
-              style: GoogleFonts.roboto(
-                color: const Color(0xFF64748B),
+              style: AppText.body(
+                color: AppColors.muted,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -61,38 +49,48 @@ class SkillsRadarChart extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: AppCard.decoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text("Compétences", style: AppText.heading(fontSize: 16)),
+          const SizedBox(height: 4),
           Text(
-            "Compétences principales",
-            style: GoogleFonts.roboto(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF0F172A),
+            'TOP ${displaySkills.length}',
+            style: AppText.mono(
+              fontSize: 10,
+              color: AppColors.mutedLight,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.2,
             ),
           ),
-          const SizedBox(height: 20),
-          Center(
-            child: SizedBox(
-              width: 250,
-              height: 250,
-              child: CustomPaint(
-                painter: RadarChartPainter(skills: displaySkills),
-              ),
-            ),
-          ),
+          const SizedBox(height: 12),
+          expand
+              ? Expanded(
+                  child: Center(
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: CustomPaint(
+                        painter: RadarChartPainter(skills: displaySkills),
+                      ),
+                    ),
+                  ),
+                )
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    final double chartSide =
+                        constraints.maxWidth.clamp(180.0, 260.0);
+                    return Center(
+                      child: SizedBox(
+                        width: chartSide,
+                        height: chartSide,
+                        child: CustomPaint(
+                          painter: RadarChartPainter(skills: displaySkills),
+                        ),
+                      ),
+                    );
+                  },
+                ),
         ],
       ),
     );
@@ -144,25 +142,26 @@ class RadarChartPainter extends CustomPainter {
     }
 
     final Paint gridPaint = Paint()
-      ..color = const Color(0xFFE2E8F0)
+      ..color = AppColors.hairline
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
     final Paint radialPaint = Paint()
-      ..color = const Color(0xFFE2E8F0)
+      ..color = AppColors.hairline
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
 
     final Paint dataFillPaint = Paint()
-      ..color = const Color(0xFF00BABC).withValues(alpha: 0.20) // Couleur 42 avec transparence
+      ..color = AppColors.primary.withValues(alpha: 0.16)
       ..style = PaintingStyle.fill;
 
     final Paint dataOutlinePaint = Paint()
-      ..color = const Color(0xFF00BABC)
+      ..color = AppColors.primary
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+      ..strokeWidth = 2.0
+      ..strokeJoin = StrokeJoin.round;
 
-    // 1. Dessiner la grille concentrique (4 niveaux de cercles/polygones : 25%, 50%, 75%, 100%)
+    // 1. Grille concentrique (4 niveaux)
     for (int step = 1; step <= 4; step++) {
       final double r = maxRadius * (step / 4);
       final Path gridPath = Path();
@@ -182,66 +181,75 @@ class RadarChartPainter extends CustomPainter {
       canvas.drawPath(gridPath, gridPaint);
     }
 
-    // 2. Dessiner les axes radiaux et le texte
+    // 2. Axes radiaux et labels
     for (int i = 0; i < count; i++) {
       final double angle = i * angleStep - pi / 2;
-      
-      // Ligne radiale
+
       final double targetX = center + maxRadius * cos(angle);
       final double targetY = center + maxRadius * sin(angle);
-      canvas.drawLine(Offset(center, center), Offset(targetX, targetY), radialPaint);
+      canvas.drawLine(
+          Offset(center, center), Offset(targetX, targetY), radialPaint);
 
-      // Texte de la compétence
       final String name = _shortenName(skills[i]['name'] as String);
       final double levelVal = skills[i]['level'] as double;
-      final String text = "$name\n(${levelVal.toStringAsFixed(1)})";
 
       final textPainter = TextPainter(
         text: TextSpan(
-          text: text,
-          style: GoogleFonts.roboto(
-            fontSize: 9,
-            fontWeight: FontWeight.w600,
-            color: const Color(0xFF475569),
-            height: 1.2,
-          ),
+          children: [
+            TextSpan(
+              text: "$name\n",
+              style: AppText.body(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.muted,
+                height: 1.25,
+              ),
+            ),
+            TextSpan(
+              text: levelVal.toStringAsFixed(1),
+              style: AppText.mono(
+                fontSize: 8.5,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryDark,
+                height: 1.25,
+              ),
+            ),
+          ],
         ),
         textAlign: TextAlign.center,
         textDirection: TextDirection.ltr,
       );
       textPainter.layout();
 
-      // Décalage pour ne pas chevaucher le graphique
       final double textDist = maxRadius + 14;
       final double labelX = center + textDist * cos(angle);
       final double labelY = center + textDist * sin(angle);
 
-      // Ajustement de l'alignement selon le quadrant
       double xOffset = 0;
       double yOffset = 0;
       final double cosVal = cos(angle);
       final double sinVal = sin(angle);
 
       if (cosVal > 0.1) {
-        xOffset = 0; // à droite de l'axe
+        xOffset = 0;
       } else if (cosVal < -0.1) {
-        xOffset = -textPainter.width; // à gauche de l'axe
+        xOffset = -textPainter.width;
       } else {
-        xOffset = -textPainter.width / 2; // centré
+        xOffset = -textPainter.width / 2;
       }
 
       if (sinVal > 0.1) {
-        yOffset = 0; // en bas
+        yOffset = 0;
       } else if (sinVal < -0.1) {
-        yOffset = -textPainter.height; // en haut
+        yOffset = -textPainter.height;
       } else {
-        yOffset = -textPainter.height / 2; // centré
+        yOffset = -textPainter.height / 2;
       }
 
       textPainter.paint(canvas, Offset(labelX + xOffset, labelY + yOffset));
     }
 
-    // 3. Dessiner la zone des données de l'utilisateur
+    // 3. Zone de données de l'utilisateur
     final Path dataPath = Path();
     for (int i = 0; i < count; i++) {
       final double angle = i * angleStep - pi / 2;
@@ -261,11 +269,16 @@ class RadarChartPainter extends CustomPainter {
     canvas.drawPath(dataPath, dataFillPaint);
     canvas.drawPath(dataPath, dataOutlinePaint);
 
-    // Dessiner de petits points sur les sommets du graphe de l'utilisateur
+    // Points sur les sommets
     final Paint pointPaint = Paint()
-      ..color = const Color(0xFF00BABC)
+      ..color = AppColors.primary
       ..style = PaintingStyle.fill;
-    
+
+    final Paint pointBorderPaint = Paint()
+      ..color = AppColors.card
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
     for (int i = 0; i < count; i++) {
       final double angle = i * angleStep - pi / 2;
       final double level = skills[i]['level'] as double;
@@ -273,6 +286,7 @@ class RadarChartPainter extends CustomPainter {
       final double x = center + r * cos(angle);
       final double y = center + r * sin(angle);
       canvas.drawCircle(Offset(x, y), 3.0, pointPaint);
+      canvas.drawCircle(Offset(x, y), 3.0, pointBorderPaint);
     }
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../auth_service.dart';
 import '../models/user_profile.dart';
+import '../theme.dart';
 import 'profile_card.dart';
 
 class SearchTab extends StatefulWidget {
@@ -16,16 +17,19 @@ class _SearchTabState extends State<SearchTab> {
   bool _isLoadingSearch = false;
   String? _searchError;
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
   Future<void> _searchStudent(String login) async {
     if (login.trim().isEmpty) return;
 
+    _searchFocus.unfocus();
     setState(() {
       _isLoadingSearch = true;
       _searchError = null;
@@ -60,88 +64,110 @@ class _SearchTabState extends State<SearchTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildSpotifySearchBar(),
+        _buildSearchBar(),
         const SizedBox(height: 20),
-        if (_isLoadingSearch)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 80.0),
-            child: CircularProgressIndicator(
-              color: Color(0xFF00BABC),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          switchInCurve: Curves.easeOut,
+          child: KeyedSubtree(
+            key: ValueKey<String>(
+              '$_isLoadingSearch-$_searchError-${_searchedProfile?.login}',
             ),
-          )
-        else if (_searchError != null)
-          _buildErrorWidget(
-            _searchError!,
-            () {
-              setState(() {
-                _searchError = null;
-              });
-            },
-          )
-        else if (_searchedProfile != null)
-          ProfileCard(profile: _searchedProfile!)
-        else
-          _buildSearchPlaceholder(),
+            child: _buildBody(),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildSpotifySearchBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+  Widget _buildBody() {
+    if (_isLoadingSearch) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 80.0),
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
+    }
+    if (_searchError != null) {
+      return _buildErrorWidget(_searchError!);
+    }
+    if (_searchedProfile != null) {
+      return ProfileCard(profile: _searchedProfile!);
+    }
+    return _buildSearchPlaceholder();
+  }
+
+  Widget _buildSearchBar() {
+    return AnimatedBuilder(
+      animation: _searchFocus,
+      builder: (context, _) {
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: _searchFocus.hasFocus
+                  ? AppColors.primary.withValues(alpha: 0.6)
+                  : AppColors.hairline,
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: TextField(
-        controller: _searchController,
-        textInputAction: TextInputAction.search,
-        onSubmitted: (value) => _searchStudent(value),
-        style: GoogleFonts.roboto(
-          color: const Color(0xFF0F172A),
-          fontWeight: FontWeight.w500,
-          fontSize: 15,
-        ),
-        decoration: InputDecoration(
-          hintText: "Rechercher un login (ex: lrezette)",
-          hintStyle: GoogleFonts.roboto(
-            color: const Color(0xFF94A3B8),
-            fontWeight: FontWeight.w400,
-            fontSize: 15,
-          ),
-          prefixIcon: const Icon(
-            Icons.search,
-            color: Color(0xFF64748B),
-            size: 22,
-          ),
-          suffixIcon: ValueListenableBuilder<TextEditingValue>(
-            valueListenable: _searchController,
-            builder: (context, value, child) {
-              if (value.text.isEmpty) {
-                return const SizedBox.shrink();
-              }
-              return IconButton(
-                icon: const Icon(
-                  Icons.clear,
-                  color: Color(0xFF64748B),
-                  size: 20,
-                ),
-                onPressed: () {
-                  _searchController.clear();
+          child: TextField(
+            controller: _searchController,
+            focusNode: _searchFocus,
+            textInputAction: TextInputAction.search,
+            onSubmitted: _searchStudent,
+            style: GoogleFonts.roboto(
+              color: AppColors.dark,
+              fontWeight: FontWeight.w500,
+              fontSize: 15,
+            ),
+            decoration: InputDecoration(
+              hintText: "Rechercher un login (ex: lrezette)",
+              hintStyle: GoogleFonts.roboto(
+                color: AppColors.mutedLight,
+                fontWeight: FontWeight.w400,
+                fontSize: 15,
+              ),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: AppColors.muted,
+                size: 22,
+              ),
+              suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _searchController,
+                builder: (context, value, child) {
+                  if (value.text.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return IconButton(
+                    icon: const Icon(
+                      Icons.clear_rounded,
+                      color: AppColors.muted,
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() {
+                        _searchedProfile = null;
+                        _searchError = null;
+                      });
+                    },
+                  );
                 },
-              );
-            },
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(vertical: 14),
+            ),
           ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -151,18 +177,25 @@ class _SearchTabState extends State<SearchTab> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.search,
-            size: 80,
-            color: Color(0xFF94A3B8),
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: AppColors.primarySoft,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.person_search_rounded,
+              size: 44,
+              color: AppColors.primary,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           Text(
             "Rechercher un étudiant",
             style: GoogleFonts.roboto(
               fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF0F172A),
+              fontWeight: FontWeight.w700,
+              color: AppColors.dark,
             ),
           ),
           const SizedBox(height: 8),
@@ -173,8 +206,8 @@ class _SearchTabState extends State<SearchTab> {
               textAlign: TextAlign.center,
               style: GoogleFonts.roboto(
                 fontSize: 14,
-                color: const Color(0xFF64748B),
-                height: 1.4,
+                color: AppColors.muted,
+                height: 1.5,
               ),
             ),
           ),
@@ -183,43 +216,74 @@ class _SearchTabState extends State<SearchTab> {
     );
   }
 
-  Widget _buildErrorWidget(String errorMsg, VoidCallback onRetry) {
-    return Center(
+  Widget _buildErrorWidget(String errorMsg) {
+    final bool isEmptyResult = errorMsg == "Aucun résultat.";
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 60.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const SizedBox(height: 40),
-          const Icon(
-            Icons.error_outline,
-            color: Colors.red,
-            size: 48,
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: isEmptyResult ? AppColors.divider : AppColors.dangerSoft,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isEmptyResult
+                  ? Icons.person_off_rounded
+                  : Icons.error_outline_rounded,
+              size: 44,
+              color: isEmptyResult ? AppColors.muted : AppColors.danger,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           Text(
-            errorMsg,
-            textAlign: TextAlign.center,
+            isEmptyResult ? "Aucun résultat" : "Une erreur est survenue",
             style: GoogleFonts.roboto(
-              color: Colors.red,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.dark,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child: Text(
+              isEmptyResult
+                  ? "Vérifiez l'orthographe du login et réessayez."
+                  : errorMsg,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.roboto(
+                fontSize: 14,
+                color: AppColors.muted,
+                height: 1.5,
+              ),
             ),
           ),
           const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: onRetry,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0F172A),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          OutlinedButton.icon(
+            onPressed: () {
+              setState(() {
+                _searchError = null;
+              });
+              _searchFocus.requestFocus();
+            },
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.dark,
+              side: const BorderSide(color: AppColors.divider),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 12,
               ),
             ),
-            child: Text(
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: Text(
               "Réessayer",
-              style: GoogleFonts.roboto(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
+              style: GoogleFonts.roboto(fontWeight: FontWeight.w600),
             ),
           ),
         ],

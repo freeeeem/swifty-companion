@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'auth_service.dart';
 import 'home.dart';
 import 'login.dart';
+import 'theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
     await dotenv.load(fileName: ".env");
     debugPrint("Dotenv loaded successfully.");
@@ -14,14 +15,14 @@ void main() async {
     debugPrint("ERROR loading .env file: $e");
   }
 
+  // Une session existe tant qu'un token est stocké. Même expiré, il sera
+  // rafraîchi automatiquement via le refresh token au premier appel API.
   bool isLoggedIn = false;
   try {
-    final prefs = await SharedPreferences.getInstance();
-    final String? accessToken = prefs.getString('access_token');
-    isLoggedIn = accessToken != null;
-    debugPrint("SharedPreferences loaded. isLoggedIn: $isLoggedIn");
+    isLoggedIn = await AuthService.hasSession();
+    debugPrint("Session loaded. isLoggedIn: $isLoggedIn");
   } catch (e) {
-    debugPrint("ERROR loading SharedPreferences: $e");
+    debugPrint("ERROR loading session: $e");
   }
 
   runApp(MyApp(isLoggedIn: isLoggedIn));
@@ -36,6 +37,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Little 42 Companion',
       debugShowCheckedModeBanner: false,
+      theme: AppTheme.dark,
       home: isLoggedIn ? const HomePage() : const LoginPage(),
     );
   }

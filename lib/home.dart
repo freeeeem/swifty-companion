@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'auth_service.dart';
 import 'login.dart';
 import 'models/user_profile.dart';
+import 'theme.dart';
 import 'widgets/profile_tab.dart';
 import 'widgets/search_tab.dart';
 import 'widgets/settings_tab.dart';
@@ -37,6 +38,18 @@ class _HomePageState extends State<HomePage> {
       final data = await AuthService.getMe();
 
       if (mounted) {
+        // Si la session a expiré et que le refresh a échoué, l'AuthService
+        // a purgé les tokens : on renvoie l'utilisateur vers le login.
+        if (data == null && !(await AuthService.hasSession())) {
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginPage()),
+            );
+          }
+          return;
+        }
+
         setState(() {
           _myProfile = data != null ? UserProfile.fromJson(data) : null;
           _isLoadingMyProfile = false;
@@ -67,77 +80,194 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  String get _greeting {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Bonjour';
+    if (hour < 18) return 'Bon après-midi';
+    return 'Bonsoir';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.background,
       extendBody: true,
       body: SafeArea(
         bottom: false,
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.only(
-              left: 24.0,
-              right: 24.0,
-              top: 20.0,
-              bottom: 100.0, // Added padding to scroll above the glass navbar
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(
+                  left: 24.0,
+                  right: 24.0,
+                  top: 8.0,
+                  bottom: 110.0, // espace pour la navbar en verre
+                ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  switchInCurve: Curves.easeOut,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.02),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
+                  ),
+                  child: KeyedSubtree(
+                    key: ValueKey<int>(_currentIndex),
+                    child: _getCurrentTabWidget(),
+                  ),
+                ),
+              ),
             ),
-            child: _getCurrentTabWidget(),
-          ),
+          ],
         ),
       ),
-      bottomNavigationBar: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.65),
-              border: Border(
-                top: BorderSide(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  width: 0.5,
+      bottomNavigationBar: _buildGlassNavBar(),
+    );
+  }
+
+  Widget _buildHeader() {
+    final profile = _myProfile;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _greeting.toUpperCase(),
+                  style: AppText.mono(
+                    fontSize: 10,
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.4,
+                  ),
                 ),
-              ),
-            ),
-            child: BottomNavigationBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              currentIndex: _currentIndex,
-              onTap: (index) {
-                setState(() {
-                  _currentIndex = index;
-                });
-              },
-              selectedItemColor: const Color(0xFF00BABC),
-              unselectedItemColor: const Color(0xFF64748B),
-              selectedLabelStyle: GoogleFonts.roboto(
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-                letterSpacing: 0.2,
-              ),
-              unselectedLabelStyle: GoogleFonts.roboto(
-                fontWeight: FontWeight.w500,
-                fontSize: 12,
-                letterSpacing: 0.2,
-              ),
-              type: BottomNavigationBarType.fixed,
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.person_outline),
-                  activeIcon: Icon(Icons.person, color: Color(0xFF00BABC)),
-                  label: 'Profil',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.search),
-                  activeIcon: Icon(Icons.search, color: Color(0xFF00BABC)),
-                  label: 'Rechercher',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.settings_outlined),
-                  activeIcon: Icon(Icons.settings, color: Color(0xFF00BABC)),
-                  label: 'Réglages',
+                const SizedBox(height: 3),
+                Text(
+                  profile != null ? profile.login : 'Little 42 Companion',
+                  style: AppText.heading(fontSize: 20),
                 ),
               ],
+            ),
+          ),
+          if (profile?.avatarUrl != null)
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.primary, width: 2),
+              ),
+              child: ClipOval(
+                child: Image.network(
+                  profile!.avatarUrl!,
+                  width: 42,
+                  height: 42,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => const CircleAvatar(
+                    radius: 21,
+                    backgroundColor: AppColors.primarySoft,
+                    child: Icon(Icons.person, color: AppColors.primary),
+                  ),
+                ),
+              ),
+            )
+          else
+            const CircleAvatar(
+              radius: 21,
+              backgroundColor: AppColors.primarySoft,
+              child: Icon(Icons.person, color: AppColors.primary),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGlassNavBar() {
+    const items = [
+      (icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profil'),
+      (icon: Icons.search, activeIcon: Icons.search, label: 'Rechercher'),
+      (
+        icon: Icons.settings_outlined,
+        activeIcon: Icons.settings,
+        label: 'Réglages'
+      ),
+    ];
+
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF0D1220).withValues(alpha: 0.82),
+            border: const Border(
+              top: BorderSide(
+                color: AppColors.hairline,
+                width: 0.5,
+              ),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                children: List.generate(items.length, (index) {
+                  final isSelected = _currentIndex == index;
+                  final item = items[index];
+                  return Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => setState(() => _currentIndex = index),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOut,
+                        margin: const EdgeInsets.symmetric(horizontal: 6),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primary.withValues(alpha: 0.12)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isSelected ? item.activeIcon : item.icon,
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.muted,
+                              size: 22,
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              item.label,
+                              style: GoogleFonts.roboto(
+                                fontSize: 11.5,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : AppColors.muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
             ),
           ),
         ),
