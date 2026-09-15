@@ -21,7 +21,8 @@ class ProjectItem {
     final String status = json['status'] ?? 'N/A';
     final int? finalMark = json['final_mark'] as int?;
     final bool? validated = json['validated?'] as bool?;
-    final DateTime updatedAt = DateTime.tryParse(json['updated_at'] ?? '') ?? DateTime.now();
+    final DateTime updatedAt =
+        DateTime.tryParse(json['updated_at'] ?? '') ?? DateTime.now();
     final DateTime? createdAt = DateTime.tryParse(json['created_at'] ?? '');
 
     return ProjectItem(
@@ -37,6 +38,7 @@ class ProjectItem {
 
 class UserProfile {
   final String displayName;
+  final String? firstName;
   final String login;
   final String email;
   final String? avatarUrl;
@@ -52,6 +54,7 @@ class UserProfile {
 
   UserProfile({
     required this.displayName,
+    this.firstName,
     required this.login,
     required this.email,
     this.avatarUrl,
@@ -68,15 +71,25 @@ class UserProfile {
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     final String displayName = json['displayname'] ?? 'Inconnu';
+    final dynamic rawFirstName = json['first_name'];
+    final String? firstName = rawFirstName is String && rawFirstName.isNotEmpty
+        ? rawFirstName
+        : null;
     final String login = json['login'] ?? 'N/A';
     final String email = json['email'] ?? 'N/A';
     final String? avatarUrl = json['image']?['versions']?['medium'];
 
     // Campus
     final List<dynamic> campusList = json['campus'] ?? [];
-    final String campusName = campusList.isNotEmpty ? campusList[0]['name'] ?? 'N/A' : 'N/A';
-    final String campusCountry = campusList.isNotEmpty ? campusList[0]['country'] ?? '' : '';
-    final String campus = campusCountry.isNotEmpty ? '$campusName, $campusCountry' : campusName;
+    final String campusName = campusList.isNotEmpty
+        ? campusList[0]['name'] ?? 'N/A'
+        : 'N/A';
+    final String campusCountry = campusList.isNotEmpty
+        ? campusList[0]['country'] ?? ''
+        : '';
+    final String campus = campusCountry.isNotEmpty
+        ? '$campusName, $campusCountry'
+        : campusName;
 
     // Cursus & Level
     final List<dynamic> cursusList = json['cursus_users'] ?? [];
@@ -96,12 +109,16 @@ class UserProfile {
     // Projects (Filtrés pour le cursus actif et hors sous-projets)
     final int? currentCursusId = mainCursus?['cursus_id'];
     final List<dynamic> rawProjects = json['projects_users'] ?? [];
-    
-    final List<ProjectItem> projects = rawProjects.where((p) {
-      final List<dynamic> cursusIds = p['cursus_ids'] ?? [];
-      final projectData = p['project'];
-      return cursusIds.contains(currentCursusId) && (projectData?['parent_id'] == null);
-    }).map((p) => ProjectItem.fromJson(p)).toList();
+
+    final List<ProjectItem> projects = rawProjects
+        .where((p) {
+          final List<dynamic> cursusIds = p['cursus_ids'] ?? [];
+          final projectData = p['project'];
+          return cursusIds.contains(currentCursusId) &&
+              (projectData?['parent_id'] == null);
+        })
+        .map((p) => ProjectItem.fromJson(p))
+        .toList();
 
     // Trier du plus récent au plus ancien
     final List<ProjectItem> sortedProjects = List.from(projects)
@@ -115,6 +132,7 @@ class UserProfile {
 
     return UserProfile(
       displayName: displayName,
+      firstName: firstName,
       login: login,
       email: email,
       avatarUrl: avatarUrl,

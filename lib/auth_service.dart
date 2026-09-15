@@ -31,19 +31,19 @@ class AuthService {
     final String accessToken = data['access_token'] as String;
     final String? refreshToken = data['refresh_token'] as String?;
     final int expiresIn = (data['expires_in'] as num?)?.toInt() ?? 7200;
-    final int createdAt = (data['created_at'] as num?)?.toInt() ??
+    final int createdAt =
+        (data['created_at'] as num?)?.toInt() ??
         (DateTime.now().millisecondsSinceEpoch ~/ 1000);
 
-    final DateTime expiresAt =
-        DateTime.fromMillisecondsSinceEpoch(createdAt * 1000)
-            .add(Duration(seconds: expiresIn));
+    final DateTime expiresAt = DateTime.fromMillisecondsSinceEpoch(
+      createdAt * 1000,
+    ).add(Duration(seconds: expiresIn));
 
     await prefs.setString('access_token', accessToken);
     if (refreshToken != null) {
       await prefs.setString('refresh_token', refreshToken);
     }
-    await prefs.setInt(
-        'token_expires_at', expiresAt.millisecondsSinceEpoch);
+    await prefs.setInt('token_expires_at', expiresAt.millisecondsSinceEpoch);
   }
 
   /// Retourne un token d'accès valide :
@@ -92,7 +92,8 @@ class AuthService {
 
       // Refresh token révoqué / invalide : la session est morte.
       debugPrint(
-          'Refresh refusé (${response.statusCode}), déconnexion implicite.');
+        'Refresh refusé (${response.statusCode}), déconnexion implicite.',
+      );
       await _clearTokens();
       return null;
     } catch (e) {
@@ -144,11 +145,11 @@ class AuthService {
       // Construction de l'URL d'autorisation
       final Uri authorizeUrl =
           Uri.https('api.intra.42.fr', '/oauth/authorize', {
-        'client_id': _clientId,
-        'redirect_uri': _redirectUri,
-        'response_type': 'code',
-        'scope': 'public',
-      });
+            'client_id': _clientId,
+            'redirect_uri': _redirectUri,
+            'response_type': 'code',
+            'scope': 'public',
+          });
 
       // Ouvre le navigateur sécurisé et attend que l'utilisateur se connecte
       final String callbackUrl = await FlutterWebAuth2.authenticate(
@@ -220,8 +221,7 @@ class AuthService {
     );
   }
 
-  static Future<Map<String, dynamic>?> _apiGet(
-      Uri uri, String label) async {
+  static Future<Map<String, dynamic>?> _apiGet(Uri uri, String label) async {
     try {
       final response = await _authorizedGet(uri);
       if (response == null) {

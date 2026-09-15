@@ -7,7 +7,6 @@ import 'models/user_profile.dart';
 import 'theme.dart';
 import 'widgets/profile_tab.dart';
 import 'widgets/search_tab.dart';
-import 'widgets/settings_tab.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -21,6 +20,7 @@ class _HomePageState extends State<HomePage> {
   bool _isLoadingMyProfile = true;
   String? _myProfileError;
   int _currentIndex = 0;
+  final GlobalKey _avatarKey = GlobalKey();
 
   @override
   void initState() {
@@ -143,51 +143,172 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  _greeting.toUpperCase(),
-                  style: AppText.mono(
-                    fontSize: 10,
-                    color: AppColors.muted,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.4,
-                  ),
+                Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      _greeting.toUpperCase(),
+                      style: AppText.mono(
+                        fontSize: 10,
+                        color: AppColors.muted,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 5),
                 Text(
-                  profile != null ? profile.login : 'Little 42 Companion',
-                  style: AppText.heading(fontSize: 20),
+                  profile != null
+                      ? (profile.firstName ?? profile.login)
+                      : 'Little 42 Companion',
+                  style: AppText.heading(fontSize: 22),
                 ),
               ],
             ),
           ),
-          if (profile?.avatarUrl != null)
-            Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.primary, width: 2),
-              ),
-              child: ClipOval(
-                child: Image.network(
-                  profile!.avatarUrl!,
-                  width: 42,
-                  height: 42,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const CircleAvatar(
-                    radius: 21,
-                    backgroundColor: AppColors.primarySoft,
-                    child: Icon(Icons.person, color: AppColors.primary),
-                  ),
-                ),
-              ),
-            )
-          else
-            const CircleAvatar(
-              radius: 21,
-              backgroundColor: AppColors.primarySoft,
-              child: Icon(Icons.person, color: AppColors.primary),
-            ),
+          _buildAvatarMenu(profile),
         ],
       ),
+    );
+  }
+
+  /// Photo de profil cliquable — le padding du child élargit la zone
+  /// tactile (~66 px) bien au-delà de l'avatar lui-même (46 px).
+  /// GestureDetector + showMenu au lieu de PopupMenuButton : aucun
+  /// ripple d'appui, donc la hitbox reste invisible.
+  Widget _buildAvatarMenu(UserProfile? profile) {
+    return Tooltip(
+      message: 'Menu du profil',
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _showAvatarMenu,
+          child: Padding(
+            key: _avatarKey,
+            // Zone tactile généreuse : 46 px d'avatar + 2 x 10 px de marge.
+            padding: const EdgeInsets.all(10),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: AppColors.primaryGradient,
+                  ),
+                  padding: const EdgeInsets.all(2),
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.background,
+                    ),
+                    child: ClipOval(
+                      child: profile?.avatarUrl != null
+                          ? Image.network(
+                              profile!.avatarUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => _avatarFallback(),
+                            )
+                          : _avatarFallback(),
+                    ),
+                  ),
+                ),
+                // Petit chevron : indice visuel que l'avatar ouvre un menu.
+                Positioned(
+                  right: -1,
+                  bottom: -1,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.cardElevated,
+                      border: Border.fromBorderSide(
+                        BorderSide(color: AppColors.hairline, width: 1),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 13,
+                      color: AppColors.muted,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Ouvre le menu du profil juste sous l'avatar (aligné à droite).
+  Future<void> _showAvatarMenu() async {
+    final RenderBox? box =
+        _avatarKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !mounted) return;
+
+    final Offset bottomRight = box.localToGlobal(
+      box.size.bottomRight(Offset.zero),
+    );
+
+    final String? value = await showMenu<String>(
+      context: context,
+      // Le point d'ancrage est le coin bas-droit de la zone tactile :
+      // le menu s'ouvre en dessous, aligné vers la gauche du point.
+      position: RelativeRect.fromLTRB(
+        bottomRight.dx,
+        bottomRight.dy + 6,
+        bottomRight.dx,
+        0,
+      ),
+      color: AppColors.cardElevated,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.hairline),
+      ),
+      items: const [
+        PopupMenuItem<String>(
+          value: 'logout',
+          height: 44,
+          child: Row(
+            children: [
+              Icon(Icons.logout, size: 18, color: AppColors.danger),
+              SizedBox(width: 10),
+              Text(
+                'Déconnexion',
+                style: TextStyle(
+                  color: AppColors.danger,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    if (!mounted) return;
+    if (value == 'logout') _handleLogout();
+  }
+
+  Widget _avatarFallback() {
+    return Container(
+      color: AppColors.primarySoft,
+      alignment: Alignment.center,
+      child: const Icon(Icons.person, size: 24, color: AppColors.primary),
     );
   }
 
@@ -195,11 +316,6 @@ class _HomePageState extends State<HomePage> {
     const items = [
       (icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profil'),
       (icon: Icons.search, activeIcon: Icons.search, label: 'Rechercher'),
-      (
-        icon: Icons.settings_outlined,
-        activeIcon: Icons.settings,
-        label: 'Réglages'
-      ),
     ];
 
     return ClipRect(
@@ -286,11 +402,6 @@ class _HomePageState extends State<HomePage> {
         );
       case 1:
         return const SearchTab();
-      case 2:
-        return SettingsTab(
-          myProfile: _myProfile,
-          onLogout: _handleLogout,
-        );
       default:
         return const SizedBox.shrink();
     }
