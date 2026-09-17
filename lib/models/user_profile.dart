@@ -37,6 +37,7 @@ class ProjectItem {
 }
 
 class UserProfile {
+  final int id;
   final String displayName;
   final String? firstName;
   final String login;
@@ -53,6 +54,7 @@ class UserProfile {
   final List<ProjectItem> lastThreeProjects;
 
   UserProfile({
+    required this.id,
     required this.displayName,
     this.firstName,
     required this.login,
@@ -71,6 +73,7 @@ class UserProfile {
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     final String displayName = json['displayname'] ?? 'Inconnu';
+    final int id = (json['id'] as num?)?.toInt() ?? 0;
     final dynamic rawFirstName = json['first_name'];
     final String? firstName = rawFirstName is String && rawFirstName.isNotEmpty
         ? rawFirstName
@@ -131,6 +134,7 @@ class UserProfile {
         .toList();
 
     return UserProfile(
+      id: id,
       displayName: displayName,
       firstName: firstName,
       login: login,

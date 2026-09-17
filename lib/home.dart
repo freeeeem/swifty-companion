@@ -1,12 +1,14 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 import 'login.dart';
 import 'models/user_profile.dart';
 import 'theme.dart';
 import 'widgets/profile_tab.dart';
 import 'widgets/search_tab.dart';
+import 'widgets/slots_tab.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,7 +27,24 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _restoreTabIndex();
     _loadOwnProfile();
+  }
+
+  /// Restaure le dernier onglet actif (persisté) : sans ça, un refresh
+  /// de la page web ramène systématiquement sur l'onglet Profil.
+  Future<void> _restoreTabIndex() async {
+    final prefs = await SharedPreferences.getInstance();
+    final index = prefs.getInt('home_tab_index') ?? 0;
+    if (mounted && index >= 0 && index < 3) {
+      setState(() => _currentIndex = index);
+    }
+  }
+
+  Future<void> _changeTab(int index) async {
+    setState(() => _currentIndex = index);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('home_tab_index', index);
   }
 
   Future<void> _loadOwnProfile() async {
@@ -316,6 +335,11 @@ class _HomePageState extends State<HomePage> {
     const items = [
       (icon: Icons.person_outline, activeIcon: Icons.person, label: 'Profil'),
       (icon: Icons.search, activeIcon: Icons.search, label: 'Rechercher'),
+      (
+        icon: Icons.event_note_outlined,
+        activeIcon: Icons.event_note,
+        label: 'Slots',
+      ),
     ];
 
     return ClipRect(
@@ -342,7 +366,7 @@ class _HomePageState extends State<HomePage> {
                   return Expanded(
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onTap: () => setState(() => _currentIndex = index),
+                      onTap: () => _changeTab(index),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 220),
                         curve: Curves.easeOut,
@@ -402,6 +426,21 @@ class _HomePageState extends State<HomePage> {
         );
       case 1:
         return const SearchTab();
+      case 2:
+        final profile = _myProfile;
+        if (profile == null) {
+          // Le profil n'est pas (encore) disponible : l'onglet Slots en dépend.
+          return Center(
+            child: Text(
+              _isLoadingMyProfile
+                  ? 'Chargement de votre profil…'
+                  : 'Profil indisponible, impossible d\'afficher vos slots.',
+              textAlign: TextAlign.center,
+              style: AppText.body(fontSize: 14, color: AppColors.muted),
+            ),
+          );
+        }
+        return SlotsTab(myProfile: profile);
       default:
         return const SizedBox.shrink();
     }

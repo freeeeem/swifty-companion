@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
+import 'models/correction_models.dart';
 
 class AuthService {
   // Clés d'API 42 chargées dynamiquement depuis le fichier .env
@@ -125,7 +126,40 @@ class AuthService {
       );
     }
 
+    // 429 : rate limit -> on attend (Retry-After, 1 s par défaut) puis
+    // on retente une seule fois.
+    if (response.statusCode == 429) {
+      response = await _retryOnRateLimit(
+        response,
+        () => http.get(uri, headers: {'Authorization': 'Bearer $token'}),
+      );
+    }
+
+    // 5xx : erreurs transitoires de l'API intra (elle est notoirement
+    // capricieuse) -> 1 retry après 1 s.
+    if (response.statusCode >= 500) {
+      await Future.delayed(const Duration(seconds: 1));
+      response = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+    }
+
     return response;
+  }
+
+  /// Attend la durée indiquée par l'en-tête Retry-After (1 s par défaut,
+  /// plafonnée à 5 s) puis retente une seule fois la requête.
+  static Future<http.Response> _retryOnRateLimit(
+    http.Response response,
+    Future<http.Response> Function() perform,
+  ) async {
+    final int? retryAfterSeconds =
+        int.tryParse(response.headers['retry-after'] ?? '');
+    final int delayMs =
+        ((retryAfterSeconds ?? 1) * 1000).clamp(1000, 5000);
+    await Future.delayed(Duration(milliseconds: delayMs));
+    return perform();
   }
 
   static Future<void> _clearTokens() async {
@@ -148,7 +182,9 @@ class AuthService {
             'client_id': _clientId,
             'redirect_uri': _redirectUri,
             'response_type': 'code',
-            'scope': 'public',
+            // 'projects' : requis pour les créneaux de correction (slots)
+            // et les scale_teams (cf. message d'erreur "Insufficient scope").
+            'scope': 'public projects',
           });
 
       // Ouvre le navigateur sécurisé et attend que l'utilisateur se connecte
@@ -221,6 +257,215 @@ class AuthService {
     );
   }
 
+  /// Requête GET authentifiée renvoyant une liste JSON (endpoints "collection").
+  /// [onResponse] permet à l'appelant de réagir au code HTTP brut.
+  /// [quiet] désactive les logs d'échec — pour les endpoints d'une chaîne
+  /// de repli dont l'échec est attendu (un repli réussit derrière).
+  static Future<List<dynamic>?> _apiGetList(
+    Uri uri,
+    String label, {
+    void Function(int statusCode)? onResponse,
+    bool quiet = false,
+  }) async {
+    try {
+      final response = await _authorizedGet(uri);
+      if (response == null) {
+        if (!quiet) {
+          debugPrint('Session invalide pour $label (token non disponible).');
+        }
+        return null;
+      }
+      onResponse?.call(response.statusCode);
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as List<dynamic>;
+      }
+      if (!quiet) {
+        // On logge un extrait du corps : les messages d'erreur de l'API 42
+        // expliquent souvent le refus (filtre non supporté, scope, etc.).
+        final body = response.body;
+        debugPrint(
+          'Échec de $label : ${response.statusCode} '
+          '${body.length > 300 ? '${body.substring(0, 300)}…' : body}',
+        );
+      }
+      return null;
+    } catch (e) {
+      if (!quiet) debugPrint('Erreur réseau sur $label : $e');
+      return null;
+    }
+  }
+
+  /// Circuit breaker : /v2/users/:id/slots renvoie 500 sur certains comptes
+  /// (données anciennes cassées côté intra). On mémorise l'échec en mémoire
+  /// pour ne pas retenter l'endpoint — et subir son délai de retry — à
+  /// chaque chargement pendant la session.
+  static bool _slotsEndpointBroken = false;
+
+  /// 5. Récupérer les créneaux de correction d'un étudiant
+  /// (/v2/users/:id/slots). Appelé sans paramètre : cet endpoint renvoie
+  /// des 500 quand on lui passe un range[begin_at] ; le filtrage par
+  /// fenêtre de dates est donc fait côté client.
+  static Future<List<dynamic>?> getUserSlots(int userId) {
+    if (_slotsEndpointBroken) {
+      return Future.value(null);
+    }
+    return _apiGetList(
+      Uri.parse('https://api.intra.42.fr/v2/users/$userId/slots'),
+      '/v2/users/$userId/slots',
+      onResponse: (statusCode) {
+        if (statusCode >= 500) _slotsEndpointBroken = true;
+      },
+    );
+  }
+
+  /// 5b. /v2/me/slots : variante qui cible directement l'utilisateur du
+  /// token — utile quand /v2/users/:id/slots plante côté intra.
+  static Future<List<dynamic>?> getMeSlots() {
+    return _apiGetList(
+      Uri.parse('https://api.intra.42.fr/v2/me/slots'),
+      '/v2/me/slots',
+    );
+  }
+
+  /// 5c. Récupère des slots précis par IDs (filtre accepté sur l'index
+  /// /v2/slots). Utilisé avec les IDs des slots créés depuis l'app.
+  static Future<List<dynamic>?> getSlotsByIds(List<int> ids) {
+    if (ids.isEmpty) {
+      return Future.value(null);
+    }
+    final label = '/v2/slots?filter[id]=${ids.join(',')}';
+    return _apiGetList(
+      Uri.https('api.intra.42.fr', '/v2/slots', {
+        'filter[id]': ids.join(','),
+        'page[size]': '100',
+      }),
+      label,
+    );
+  }
+
+  /// Requête authentifiée non-GET (POST, DELETE) avec retry 401,
+  /// en miroir de _authorizedGet.
+  static Future<http.Response?> _authorizedSend(
+    Future<http.Response> Function(String token) perform,
+  ) async {
+    String? token = await _getValidAccessToken();
+    if (token == null) return null;
+
+    http.Response response = await perform(token);
+
+    // 401 : le token a été révoqué côté serveur -> refresh forcé + 1 retry.
+    if (response.statusCode == 401) {
+      await _clearTokens();
+      token = await _getValidAccessToken();
+      if (token == null) return null;
+      response = await perform(token);
+    }
+
+    // 429 : rate limit -> on attend puis on retente une seule fois.
+    if (response.statusCode == 429) {
+      final String currentToken = token;
+      response = await _retryOnRateLimit(response, () => perform(currentToken));
+    }
+
+    return response;
+  }
+
+  /// Extrait le message d'erreur renvoyé par l'API 42 (formats variés selon
+  /// l'endpoint : {"error": "..."}, {"errors": {...}} ou {"errors": [...]}).
+  static String _extractApiError(http.Response response) {
+    try {
+      final dynamic data = json.decode(response.body);
+      if (data is Map) {
+        final dynamic error = data['error'];
+        if (error is String && error.isNotEmpty) return error;
+        final dynamic errors = data['errors'];
+        if (errors is Map) {
+          return errors.entries
+              .map((e) =>
+                  '${e.key} : ${e.value is List ? e.value.join(', ') : e.value}')
+              .join(' · ');
+        }
+        if (errors is List) return errors.join(', ');
+      }
+    } catch (_) {}
+    return 'erreur ${response.statusCode}';
+  }
+
+  /// 8. Proposer un créneau de correction (POST /v2/slots) : rend
+  /// l'utilisateur disponible en tant que correcteur sur ce créneau.
+  /// L'API exige slot[user_id] (sinon 404), un créneau futur, une fin
+  /// postérieure au début, et pas de chevauchement avec un créneau existant.
+  /// Retourne (error: null, created: le slot) en cas de succès, sinon
+  /// (error: message de l'API, created: null).
+  static Future<(String? error, CorrectionSlot? created)> createSlot(
+    int userId,
+    DateTime beginAt,
+    DateTime endAt,
+  ) async {
+    try {
+      final response = await _authorizedSend((token) {
+        return http.post(
+          Uri.parse('https://api.intra.42.fr/v2/slots'),
+          headers: {'Authorization': 'Bearer $token'},
+          body: {
+            'slot[user_id]': '$userId',
+            'slot[begin_at]': beginAt.toUtc().toIso8601String(),
+            'slot[end_at]': endAt.toUtc().toIso8601String(),
+          },
+        );
+      });
+      if (response == null) {
+        return ('session invalide, reconnectez-vous', null);
+      }
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        // L'API 42 peut renvoyer un corps vide ou non conforme alors que
+        // le créneau a bien été créé : on considère quand même le succès,
+        // le slot apparaîtra au rechargement.
+        CorrectionSlot? slot;
+        try {
+          final dynamic data = json.decode(response.body);
+          if (data is Map<String, dynamic>) {
+            slot = CorrectionSlot.fromJson(data);
+          }
+        } catch (_) {}
+        return (null, slot);
+      }
+      debugPrint(
+        'Échec de création de slot (${response.statusCode}) : ${response.body}',
+      );
+      return (_extractApiError(response), null);
+    } catch (e) {
+      debugPrint('Erreur réseau sur POST /v2/slots : $e');
+      return ('erreur réseau : $e', null);
+    }
+  }
+
+  /// 9. Supprimer un créneau de correction (DELETE /v2/slots/:id).
+  /// L'API n'accepte que ses propres créneaux, non réservés et futurs.
+  /// Retourne null en cas de succès, sinon le message d'erreur de l'API.
+  static Future<String?> deleteSlot(int slotId) async {
+    try {
+      final response = await _authorizedSend((token) {
+        return http.delete(
+          Uri.parse('https://api.intra.42.fr/v2/slots/$slotId'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+      });
+      if (response == null) return 'session invalide, reconnectez-vous';
+      if (response.statusCode == 204 || response.statusCode == 200) {
+        return null;
+      }
+      debugPrint(
+        'Échec de suppression de slot ($slotId, ${response.statusCode}) : '
+        '${response.body}',
+      );
+      return _extractApiError(response);
+    } catch (e) {
+      debugPrint('Erreur réseau sur DELETE /v2/slots/$slotId : $e');
+      return 'erreur réseau : $e';
+    }
+  }
+
   static Future<Map<String, dynamic>?> _apiGet(Uri uri, String label) async {
     try {
       final response = await _authorizedGet(uri);
@@ -239,7 +484,7 @@ class AuthService {
     }
   }
 
-  /// 5. Déconnexion (suppression de tous les tokens stockés)
+  /// 7. Déconnexion (suppression de tous les tokens stockés)
   static Future<void> logout() async {
     await _clearTokens();
   }
