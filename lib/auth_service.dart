@@ -312,6 +312,10 @@ class AuthService {
     return _apiGetList(
       Uri.parse('https://api.intra.42.fr/v2/users/$userId/slots'),
       '/v2/users/$userId/slots',
+      // quiet : ce premier maillon échoue souvent (500 sur comptes avec
+      // données anciennes) mais la chaîne de repli prend le relais —
+      // inutile de polluer la console.
+      quiet: true,
       onResponse: (statusCode) {
         if (statusCode >= 500) _slotsEndpointBroken = true;
       },
@@ -324,6 +328,9 @@ class AuthService {
     return _apiGetList(
       Uri.parse('https://api.intra.42.fr/v2/me/slots'),
       '/v2/me/slots',
+      // quiet : maillon intermédiaire de la chaîne de repli, l'échec est
+      // attendu si le repli suivant réussit (cf. getSlotsByIds).
+      quiet: true,
     );
   }
 

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../models/user_profile.dart';
 import '../theme.dart';
 
@@ -20,11 +19,7 @@ class SettingsTab extends StatelessWidget {
       children: [
         Text(
           "Réglages",
-          style: GoogleFonts.roboto(
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: AppColors.dark,
-          ),
+          style: AppText.heading(fontSize: 24),
         ),
         const SizedBox(height: 24),
         if (myProfile != null) ...[
@@ -64,16 +59,12 @@ class SettingsTab extends StatelessWidget {
                     children: [
                       Text(
                         myProfile!.displayName,
-                        style: GoogleFonts.roboto(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                          color: AppColors.dark,
-                        ),
+                        style: AppText.heading(fontSize: 16),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         myProfile!.email,
-                        style: GoogleFonts.roboto(
+                        style: AppText.body(
                           fontSize: 13,
                           color: AppColors.muted,
                         ),
@@ -104,14 +95,14 @@ class SettingsTab extends StatelessWidget {
                 ),
                 title: Text(
                   "Déconnexion",
-                  style: GoogleFonts.roboto(
+                  style: AppText.body(
                     color: AppColors.danger,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 subtitle: Text(
                   "Se déconnecter de votre compte 42",
-                  style: GoogleFonts.roboto(
+                  style: AppText.body(
                     fontSize: 12,
                     color: AppColors.muted,
                   ),
@@ -133,16 +124,16 @@ class SettingsTab extends StatelessWidget {
             children: [
               Text(
                 "Little 42 Companion",
-                style: GoogleFonts.roboto(
-                  fontWeight: FontWeight.w500,
+                style: AppText.body(
                   fontSize: 14,
+                  fontWeight: FontWeight.w500,
                   color: AppColors.mutedLight,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 "Version 1.0.0",
-                style: GoogleFonts.roboto(
+                style: AppText.body(
                   fontSize: 12,
                   color: AppColors.mutedLight.withValues(alpha: 0.7),
                 ),

@@ -84,34 +84,60 @@ class _LoginPageState extends State<LoginPage>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Logo 42 dans une carte de verre
+                        // Logo 42 hero : anneau dégradé + lueur
                         Container(
-                          padding: const EdgeInsets.all(28),
+                          padding: const EdgeInsets.all(3),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.10),
-                            ),
+                            gradient: AppColors.primaryGradient,
+                            borderRadius: BorderRadius.circular(32),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.4),
+                                blurRadius: 40,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
                           ),
-                          child: Image.asset(
-                            'assets/logo.png',
-                            height: 110,
-                            color: Colors.white,
-                            colorBlendMode: BlendMode.srcIn,
+                          child: Container(
+                            padding: const EdgeInsets.all(30),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0B1220),
+                              borderRadius: BorderRadius.circular(29),
+                            ),
+                            child: Image.asset(
+                              'assets/logo.png',
+                              height: 96,
+                              color: Colors.white,
+                              colorBlendMode: BlendMode.srcIn,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 40),
 
-                        // Titre
+                        // Kicker
                         Text(
                           'LITTLE 42 COMPANION',
                           textAlign: TextAlign.center,
                           style: AppText.mono(
-                            color: Colors.white,
-                            fontSize: 22,
+                            color: AppColors.primary,
+                            fontSize: 12,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 4.0,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          'Ton compagnon 42',
+                          textAlign: TextAlign.center,
+                          style: AppText.display(fontSize: 32),
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          height: 3,
+                          width: 64,
+                          decoration: BoxDecoration(
+                            gradient: AppColors.primaryGradient,
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
                         const SizedBox(height: 14),

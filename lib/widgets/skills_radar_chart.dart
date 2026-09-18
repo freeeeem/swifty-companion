@@ -2,6 +2,43 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../theme.dart';
 
+/// Traduction FR des noms de compétences renvoyés par l'API 42 (en
+/// anglais). Recherche par clé normalisée (minuscules) pour être robuste
+/// aux variations de casse.
+const Map<String, String> _skillNameFr = {
+  'algorithms & ai': 'Algorithmique & IA',
+  'basic programming': 'Programmation de base',
+  'unix': 'Unix',
+  'network & system administration': 'Administration réseau & système',
+  'imperative programming': 'Programmation impérative',
+  'object-oriented programming': 'Programmation orientée objet',
+  'graphics': 'Graphisme',
+  'web': 'Web',
+  'security': 'Sécurité',
+  'db & data': 'Bases de données & Data',
+  'data science': 'Science des données',
+  'functional programming': 'Programmation fonctionnelle',
+  'rigor': 'Rigueur',
+  'organization': 'Organisation',
+  'adaptation & creativity': 'Adaptation & créativité',
+  'adaptability & group work': 'Adaptabilité & travail de groupe',
+  'company experience': 'Expérience en entreprise',
+  'digital exposure': 'Exposition digitale',
+  'human interaction': 'Interaction humaine',
+  'group & interpersonal': 'Groupe & relations interpersonnelles',
+  'technology integration': 'Intégration technologique',
+  'teamwork': "Travail d'équipe",
+  'work management': 'Gestion du travail',
+  'parallel computing': 'Calcul parallèle',
+};
+
+/// Renvoie le nom français d'une compétence API 42, ou le nom d'origine
+/// s'il n'est pas connu de la table (les compétences non couvertes
+/// s'affichent alors telles quelles).
+String _skillFr(String name) {
+  return _skillNameFr[name.trim().toLowerCase()] ?? name.trim();
+}
+
 class SkillsRadarChart extends StatelessWidget {
   final List<dynamic> skills;
 
@@ -19,7 +56,7 @@ class SkillsRadarChart extends StatelessWidget {
   Widget build(BuildContext context) {
     // 1. Parser et filtrer les compétences
     final List<Map<String, dynamic>> parsedSkills = skills.map((s) {
-      final name = s['name'] as String? ?? '';
+      final name = _skillFr(s['name'] as String? ?? '');
       final level = (s['level'] as num?)?.toDouble() ?? 0.0;
       return {'name': name, 'level': level};
     }).toList();
@@ -256,16 +293,28 @@ class RadarChartPainter extends CustomPainter {
   // Raccourcir les noms de compétences trop longs pour un affichage propre
   String _shortenName(String name) {
     switch (name.trim()) {
-      case "Network & system administration":
+      case "Administration réseau & système":
         return "Réseau & Sys";
-      case "Imperative programming":
+      case "Programmation impérative":
         return "Impératif";
-      case "Object-oriented programming":
-        return "C++ / OOP";
-      case "Algorithms & AI":
+      case "Programmation orientée objet":
+        return "POO";
+      case "Algorithmique & IA":
         return "Algo & IA";
-      case "Technology integration":
+      case "Intégration technologique":
         return "Intég. Tech";
+      case "Programmation fonctionnelle":
+        return "Fonctionnel";
+      case "Bases de données & Data":
+        return "BDD & Data";
+      case "Adaptabilité & travail de groupe":
+        return "Adapt. & Groupe";
+      case "Expérience en entreprise":
+        return "Entreprise";
+      case "Group & relations interpersonnelles":
+        return "Groupe";
+      case "Gestion du travail":
+        return "Gestion";
       case "Unix":
         return "Unix";
       default:

@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../theme.dart';
 
@@ -52,6 +53,16 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
   int _startMinutes = _firstMinutes;
   Duration _duration = const Duration(minutes: 30);
 
+  /// Défilement de la liste des heures : contrôlé manuellement pour
+  /// centrer l'heure sélectionnée et mapper la molette (sinon la liste
+  /// horizontale ne réagit pas au wheel et le scroll est "bugué").
+  final ScrollController _timeScrollController = ScrollController();
+
+  /// Largeur fixe d'une puce d'heure ("08:00" en mono 12 + padding) :
+  /// permet de calculer la position exacte de chaque puce.
+  static const double _timeChipWidth = 56;
+  static const double _timeChipGap = 6;
+
   @override
   void initState() {
     super.initState();
@@ -62,6 +73,36 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
     int minutes = ((now.hour * 60 + now.minute) ~/ 30 + 1) * 30;
     if (minutes > _lastMinutes) minutes = _firstMinutes;
     _startMinutes = minutes;
+    // Centre l'heure présélectionnée dès l'ouverture du dialog.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scrollToSelectedChip(animate: false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timeScrollController.dispose();
+    super.dispose();
+  }
+
+  /// Fait défiler la liste des heures pour centrer la puce sélectionnée.
+  void _scrollToSelectedChip({required bool animate}) {
+    if (!_timeScrollController.hasClients) return;
+    final int index = (_startMinutes - _firstMinutes) ~/ 30;
+    final double itemExtent = _timeChipWidth + _timeChipGap;
+    final double viewport =
+        _timeScrollController.position.viewportDimension;
+    final double target = (index * itemExtent + _timeChipWidth / 2 - viewport / 2)
+        .clamp(0.0, _timeScrollController.position.maxScrollExtent);
+    if (animate) {
+      _timeScrollController.animateTo(
+        target,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+    } else {
+      _timeScrollController.jumpTo(target);
+    }
   }
 
   int get _daysInMonth => DateTime(_visibleMonth.year, _visibleMonth.month + 1, 0).day;
@@ -323,18 +364,41 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
   Widget _buildTimeChips() {
     return SizedBox(
       height: 38,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: ((_lastMinutes - _firstMinutes) ~/ 30) + 1,
-        separatorBuilder: (_, _) => const SizedBox(width: 6),
-        itemBuilder: (context, index) {
-          final minutes = _firstMinutes + index * 30;
-          return _buildChip(
-            label: _formatTime(minutes),
-            selected: minutes == _startMinutes,
-            onTap: () => setState(() => _startMinutes = minutes),
+      // La molette sur une liste horizontale est ignorée par défaut (le
+      // scroll vertical passe au SingleChildScrollView parent) : on la
+      // convertit explicitement en défilement horizontal.
+      child: Listener(
+        onPointerSignal: (event) {
+          if (event is! PointerScrollEvent) return;
+          if (!_timeScrollController.hasClients) return;
+          final position = _timeScrollController.position;
+          final double target = (position.pixels + event.scrollDelta.dy)
+              .clamp(0.0, position.maxScrollExtent);
+          position.animateTo(
+            target,
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
           );
         },
+        child: ListView.separated(
+          controller: _timeScrollController,
+          scrollDirection: Axis.horizontal,
+          itemCount: ((_lastMinutes - _firstMinutes) ~/ 30) + 1,
+          separatorBuilder: (_, _) => const SizedBox(width: _timeChipGap),
+          itemBuilder: (context, index) {
+            final minutes = _firstMinutes + index * 30;
+            return _buildChip(
+              label: _formatTime(minutes),
+              width: _timeChipWidth,
+              selected: minutes == _startMinutes,
+              onTap: () {
+                setState(() => _startMinutes = minutes);
+                // Recentre la puce choisie pour qu'elle reste bien visible.
+                _scrollToSelectedChip(animate: true);
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -360,6 +424,7 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
     required String label,
     required bool selected,
     required VoidCallback onTap,
+    double? width,
   }) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -367,6 +432,7 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         height: 34,
+        width: width,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         alignment: Alignment.center,
         decoration: BoxDecoration(

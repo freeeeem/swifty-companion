@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../models/user_profile.dart';
 import '../theme.dart';
 import 'profile_card.dart';
@@ -50,11 +49,7 @@ class ProfileTab extends StatelessWidget {
             const SizedBox(height: 20),
             Text(
               "Une erreur est survenue",
-              style: GoogleFonts.roboto(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.dark,
-              ),
+              style: AppText.heading(fontSize: 18),
             ),
             const SizedBox(height: 8),
             Padding(
@@ -62,9 +57,9 @@ class ProfileTab extends StatelessWidget {
               child: Text(
                 error!,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.roboto(
-                  color: AppColors.muted,
+                style: AppText.body(
                   fontSize: 14,
+                  color: AppColors.muted,
                   height: 1.5,
                 ),
               ),
@@ -87,7 +82,7 @@ class ProfileTab extends StatelessWidget {
               icon: const Icon(Icons.refresh_rounded, size: 18),
               label: Text(
                 "Réessayer",
-                style: GoogleFonts.roboto(fontWeight: FontWeight.w600),
+                style: AppText.body(fontWeight: FontWeight.w600),
               ),
             ),
           ],

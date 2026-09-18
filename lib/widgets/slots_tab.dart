@@ -380,7 +380,12 @@ class _SlotsTabState extends State<SlotsTab> {
     if (!mounted) return;
     setState(() => _isSubmitting = false);
 
-    if (error == null && created != null) {
+    if (error != null) {
+      _showSnack('Échec de la proposition : $error');
+    } else {
+      // Succès : created peut être null si l'API a renvoyé un corps vide
+      // ou non conforme alors que le créneau a bien été créé (comportement
+      // connu de l'intra) — on affiche quand même la confirmation.
       _showSnack(
         'Créneau proposé : ${_formatTime(proposal.beginAt.toLocal())} — '
         '${_formatTime(proposal.endAt.toLocal())}.',
@@ -388,11 +393,12 @@ class _SlotsTabState extends State<SlotsTab> {
       // Ajout optimiste : le slot reste visible même si le rechargement
       // échoue (l'endpoint de listing peut renvoyer 500). On fusionne
       // au cas où il prolonge une disponibilité existante.
-      await _rememberSlotId(created.id);
-      setState(() => _slots = _mergeContiguousSlots([..._slots, created]));
-      _selectDay(proposal.beginAt.toLocal());
-    } else {
-      _showSnack('Échec de la proposition : ${error ?? 'réponse inattendue'}');
+      final slot = created;
+      if (slot != null) {
+        await _rememberSlotId(slot.id);
+        setState(() => _slots = _mergeContiguousSlots([..._slots, slot]));
+        _selectDay(slot.beginAt.toLocal());
+      }
     }
     _loadData();
   }

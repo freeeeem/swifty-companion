@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../auth_service.dart';
 import '../models/user_profile.dart';
 import '../theme.dart';
@@ -123,17 +122,16 @@ class _SearchTabState extends State<SearchTab> {
             focusNode: _searchFocus,
             textInputAction: TextInputAction.search,
             onSubmitted: _searchStudent,
-            style: GoogleFonts.roboto(
-              color: AppColors.dark,
-              fontWeight: FontWeight.w500,
+            style: AppText.body(
               fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: AppColors.dark,
             ),
             decoration: InputDecoration(
               hintText: "Rechercher un login (ex: lrezette)",
-              hintStyle: GoogleFonts.roboto(
-                color: AppColors.mutedLight,
-                fontWeight: FontWeight.w400,
+              hintStyle: AppText.body(
                 fontSize: 15,
+                color: AppColors.mutedLight,
               ),
               prefixIcon: const Icon(
                 Icons.search_rounded,
@@ -192,11 +190,7 @@ class _SearchTabState extends State<SearchTab> {
           const SizedBox(height: 20),
           Text(
             "Rechercher un étudiant",
-            style: GoogleFonts.roboto(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppColors.dark,
-            ),
+            style: AppText.heading(fontSize: 18),
           ),
           const SizedBox(height: 8),
           Padding(
@@ -204,7 +198,7 @@ class _SearchTabState extends State<SearchTab> {
             child: Text(
               "Saisissez le login d'un étudiant pour voir son profil, ses projets et ses compétences.",
               textAlign: TextAlign.center,
-              style: GoogleFonts.roboto(
+              style: AppText.body(
                 fontSize: 14,
                 color: AppColors.muted,
                 height: 1.5,
@@ -240,11 +234,7 @@ class _SearchTabState extends State<SearchTab> {
           const SizedBox(height: 20),
           Text(
             isEmptyResult ? "Aucun résultat" : "Une erreur est survenue",
-            style: GoogleFonts.roboto(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: AppColors.dark,
-            ),
+            style: AppText.heading(fontSize: 18),
           ),
           const SizedBox(height: 8),
           Padding(
@@ -254,7 +244,7 @@ class _SearchTabState extends State<SearchTab> {
                   ? "Vérifiez l'orthographe du login et réessayez."
                   : errorMsg,
               textAlign: TextAlign.center,
-              style: GoogleFonts.roboto(
+              style: AppText.body(
                 fontSize: 14,
                 color: AppColors.muted,
                 height: 1.5,
@@ -283,7 +273,7 @@ class _SearchTabState extends State<SearchTab> {
             icon: const Icon(Icons.refresh_rounded, size: 18),
             label: Text(
               "Réessayer",
-              style: GoogleFonts.roboto(fontWeight: FontWeight.w600),
+              style: AppText.body(fontWeight: FontWeight.w600),
             ),
           ),
         ],

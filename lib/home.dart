@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 import 'login.dart';
@@ -9,6 +8,7 @@ import 'theme.dart';
 import 'widgets/profile_tab.dart';
 import 'widgets/search_tab.dart';
 import 'widgets/slots_tab.dart';
+import 'widgets/settings_tab.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -111,42 +111,47 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBody: true,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.only(
-                  left: 24.0,
-                  right: 24.0,
-                  top: 8.0,
-                  bottom: 110.0, // espace pour la navbar en verre
-                ),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
-                  switchInCurve: Curves.easeOut,
-                  switchOutCurve: Curves.easeIn,
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0, 0.02),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
+      body: Stack(
+        children: [
+          const Positioned.fill(child: AppBackground()),
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(
+                      left: 20.0,
+                      right: 20.0,
+                      top: 8.0,
+                      bottom: 120.0, // espace pour la navbar flottante
+                    ),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 280),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeIn,
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, 0.03),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      ),
+                      child: KeyedSubtree(
+                        key: ValueKey<int>(_currentIndex),
+                        child: _getCurrentTabWidget(),
+                      ),
                     ),
                   ),
-                  child: KeyedSubtree(
-                    key: ValueKey<int>(_currentIndex),
-                    child: _getCurrentTabWidget(),
-                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       bottomNavigationBar: _buildGlassNavBar(),
     );
@@ -154,42 +159,53 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildHeader() {
     final profile = _myProfile;
+    final name = profile != null
+        ? (profile.firstName ?? profile.login)
+        : 'Little 42 Companion';
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 4),
+      padding: const EdgeInsets.fromLTRB(24, 18, 24, 14),
       child: Row(
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   children: [
                     Container(
                       width: 6,
                       height: 6,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: AppColors.primary,
+                        color: AppColors.mint,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.mint
+                                .withValues(alpha: 0.8),
+                            blurRadius: 8,
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 7),
+                    const SizedBox(width: 8),
                     Text(
                       _greeting.toUpperCase(),
                       style: AppText.mono(
-                        fontSize: 10,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
                         color: AppColors.muted,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 2,
+                        letterSpacing: 2.2,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  profile != null
-                      ? (profile.firstName ?? profile.login)
-                      : 'Little 42 Companion',
-                  style: AppText.heading(fontSize: 22),
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.display(fontSize: 26),
                 ),
               ],
             ),
@@ -220,13 +236,21 @@ class _HomePageState extends State<HomePage> {
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  width: 46,
-                  height: 46,
-                  decoration: const BoxDecoration(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: AppColors.primaryGradient,
+                    boxShadow: [
+                      BoxShadow(
+                        color:
+                            AppColors.primary.withValues(alpha: 0.45),
+                        blurRadius: 14,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  padding: const EdgeInsets.all(2),
+                  padding: const EdgeInsets.all(2.5),
                   child: Container(
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
@@ -248,19 +272,16 @@ class _HomePageState extends State<HomePage> {
                   right: -1,
                   bottom: -1,
                   child: Container(
-                    width: 16,
-                    height: 16,
+                    width: 18,
+                    height: 18,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.cardElevated,
-                      border: Border.fromBorderSide(
-                        BorderSide(color: AppColors.hairline, width: 1),
-                      ),
+                      gradient: AppColors.primaryGradient,
                     ),
                     child: const Icon(
                       Icons.keyboard_arrow_down,
-                      size: 13,
-                      color: AppColors.muted,
+                      size: 14,
+                      color: AppColors.background,
                     ),
                   ),
                 ),
@@ -297,20 +318,20 @@ class _HomePageState extends State<HomePage> {
         borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: AppColors.hairline),
       ),
-      items: const [
+      items: [
         PopupMenuItem<String>(
           value: 'logout',
           height: 44,
           child: Row(
             children: [
-              Icon(Icons.logout, size: 18, color: AppColors.danger),
-              SizedBox(width: 10),
+              const Icon(Icons.logout, size: 18, color: AppColors.danger),
+              const SizedBox(width: 10),
               Text(
                 'Déconnexion',
-                style: TextStyle(
-                  color: AppColors.danger,
+                style: AppText.body(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
+                  color: AppColors.danger,
                 ),
               ),
             ],
@@ -391,7 +412,7 @@ class _HomePageState extends State<HomePage> {
                             const SizedBox(height: 3),
                             Text(
                               item.label,
-                              style: GoogleFonts.roboto(
+                              style: AppText.body(
                                 fontSize: 11.5,
                                 fontWeight: isSelected
                                     ? FontWeight.w700
