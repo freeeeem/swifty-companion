@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart' show RenderProxyBox;
 import '../models/user_profile.dart';
 import '../theme.dart';
 import 'projects_card.dart';
@@ -15,10 +14,6 @@ class ProfileCard extends StatefulWidget {
 }
 
 class _ProfileCardState extends State<ProfileCard> {
-  /// Hauteur mesurée de la carte Projets, réutilisée pour la carte
-  /// Compétences afin que les deux cartes soient strictement égales.
-  double? _projectsCardHeight;
-
   @override
   Widget build(BuildContext context) {
     final profile = widget.profile;
@@ -48,8 +43,8 @@ class _ProfileCardState extends State<ProfileCard> {
               child: _buildStatCard(
                 value: '$wallet',
                 unit: '₳',
-                label: 'WALLET',
-                icon: Icons.account_balance_wallet_rounded,
+                label: 'Wallet',
+                icon: Icons.account_balance_wallet_outlined,
               ),
             ),
             const SizedBox(width: 12),
@@ -57,8 +52,8 @@ class _ProfileCardState extends State<ProfileCard> {
               child: _buildStatCard(
                 value: '$correctionsPoints',
                 unit: 'pts',
-                label: 'CORRECTION',
-                icon: Icons.fact_check_rounded,
+                label: 'Correction',
+                icon: Icons.check_outlined,
               ),
             ),
           ],
@@ -82,59 +77,20 @@ class _ProfileCardState extends State<ProfileCard> {
           ),
         ),
         const SizedBox(height: 12),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth > 580;
-            final projectsCard = ProjectsCard(
-              key: ValueKey('projects-${profile.login}'),
-              allProjects: allProjects,
-            );
-
-            final skillsChart =
-                SkillsRadarChart(skills: profile.skills, expand: isWide);
-
-            if (isWide) {
-              // Les deux cartes prennent la même hauteur : celle de la carte
-              // Projets, mesurée après le premier frame.
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: _MeasureSize(
-                      onChange: (size) {
-                        if (_projectsCardHeight != size.height) {
-                          setState(() => _projectsCardHeight = size.height);
-                        }
-                      },
-                      child: projectsCard,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SizedBox(
-                      // Repli le temps de la première mesure post-frame.
-                      height: _projectsCardHeight ?? 320.0,
-                      child: skillsChart,
-                    ),
-                  ),
-                ],
-              );
-            } else {
-              return Column(
-                children: [
-                  projectsCard,
-                  const SizedBox(height: 12),
-                  skillsChart,
-                ],
-              );
-            }
-          },
+        // Projets puis compétences : deux blocs indépendants, chacun à
+        // hauteur naturelle. Le radar a une hauteur fixe (voir
+        // SkillsRadarChart) donc la recherche ne le fait plus bouger.
+        ProjectsCard(
+          key: ValueKey('projects-${profile.login}'),
+          allProjects: allProjects,
         ),
+        const SizedBox(height: 12),
+        SkillsRadarChart(skills: profile.skills),
       ],
     );
   }
 
-  // --- Header sombre avec avatar, nom, login et présence cluster ---
+  // --- Header simple : avatar, nom, login et présence cluster ---
 
   Widget _buildHeaderCard(UserProfile profile) {
     final String displayName = profile.displayName;
@@ -144,16 +100,12 @@ class _ProfileCardState extends State<ProfileCard> {
     final String? location = profile.location;
     final bool isOnline = location != null;
     return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: AppColors.headerGradient,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.hairline),
-      ),
+      padding: const EdgeInsets.all(16),
+      decoration: AppCard.decoration(),
       child: Row(
         children: [
           _buildAvatar(avatarUrl, isOnline),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,79 +114,60 @@ class _ProfileCardState extends State<ProfileCard> {
                   displayName,
                   overflow: TextOverflow.ellipsis,
                   style: AppText.heading(
-                    fontSize: 19,
+                    fontSize: 17,
                     color: AppColors.dark,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Row(
                   children: [
                     Flexible(
                       child: Text(
                         login,
                         overflow: TextOverflow.ellipsis,
-                        style: AppText.mono(
+                        style: AppText.body(
                           fontSize: 13,
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
+                          color: AppColors.muted,
+                          fontWeight: FontWeight.w400,
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Vrai statut : la pastille + le libellé reflètent la
-                    // présence sur un poste du cluster (champ location).
+                    // Vrai statut : pastille mate + libellé sobre reflétant
+                    // la présence sur un poste du cluster (champ location).
                     StatusPill(
-                      label: isOnline ? 'EN LIGNE' : 'HORS LIGNE',
+                      label: isOnline ? 'En ligne' : 'Hors ligne',
                       color: isOnline
                           ? AppColors.success
                           : AppColors.mutedLight,
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(
-                      Icons.place_rounded,
-                      size: 13,
-                      color: AppColors.mutedLight,
-                    ),
-                    const SizedBox(width: 4),
                     Flexible(
                       child: Text(
                         campus,
                         overflow: TextOverflow.ellipsis,
                         style: AppText.body(
                           fontSize: 12,
-                          color: AppColors.mutedLight,
+                          color: AppColors.muted,
                         ),
                       ),
                     ),
                   ],
                 ),
-                // Poste occupé quand connu (ex. "En ce moment : c1r2s3").
+                // Poste occupé quand connu (ex. "Sur c1r2s3").
                 if (location != null) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.computer_rounded,
-                        size: 13,
-                        color: AppColors.success,
-                      ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          'En ce moment : $location',
-                          overflow: TextOverflow.ellipsis,
-                          style: AppText.mono(
-                            fontSize: 11.5,
-                            color: AppColors.success,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 2),
+                  Text(
+                    'Sur $location',
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.body(
+                      fontSize: 12,
+                      color: AppColors.muted,
+                    ),
                   ),
                 ],
               ],
@@ -246,77 +179,62 @@ class _ProfileCardState extends State<ProfileCard> {
   }
 
   Widget _buildAvatar(String? avatarUrl, bool isOnline) {
-    return Container(
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.primary, width: 2),
-      ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          ClipOval(
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.hairline, width: 1.5),
+          ),
+          child: ClipOval(
             child: avatarUrl != null
                 ? Image.network(
                     avatarUrl,
-                    width: 68,
-                    height: 68,
+                    width: 64,
+                    height: 64,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) =>
                         _buildAvatarPlaceholder(),
                   )
                 : _buildAvatarPlaceholder(),
           ),
-          // Pastille de présence : verte sur un poste du cluster
-          // (location non null), grise sinon.
-          Positioned(
-            right: -1,
-            bottom: -1,
-            child: Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.card,
-                border: Border.all(color: AppColors.card, width: 2),
-              ),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isOnline ? AppColors.success : AppColors.mutedLight,
-                  boxShadow: [
-                    if (isOnline)
-                      BoxShadow(
-                        color: AppColors.success.withValues(alpha: 0.7),
-                        blurRadius: 6,
-                      ),
-                  ],
-                ),
-              ),
+        ),
+        // Pastille de présence mate, sans lueur.
+        Positioned(
+          right: -1,
+          bottom: -1,
+          child: Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isOnline ? AppColors.success : AppColors.mutedLight,
+              border: Border.all(color: AppColors.card, width: 2.5),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildAvatarPlaceholder() {
     return Container(
-      width: 68,
-      height: 68,
+      width: 64,
+      height: 64,
       color: AppColors.cardElevated,
       child: const Icon(
         Icons.person_rounded,
-        size: 34,
+        size: 32,
         color: AppColors.mutedLight,
       ),
     );
   }
 
-  // --- Barre de niveau segmentée (blocs, esprit 42) ---
+  // --- Niveau : simple barre fine, sans segments ni animation ---
 
   Widget _buildLevelCard(double level, int levelInt, int levelPercent) {
-    const segments = 20;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: AppCard.decoration(),
@@ -325,68 +243,35 @@ class _ProfileCardState extends State<ProfileCard> {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
             children: [
-              Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: 'NIVEAU ',
-                      style: AppText.mono(
-                        fontSize: 11,
-                        color: AppColors.muted,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    TextSpan(
-                      text: '$levelInt',
-                      style: AppText.mono(
-                        fontSize: 15,
-                        color: AppColors.dark,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+              Text(
+                'Niveau $levelInt',
+                style: AppText.body(
+                  fontSize: 13,
+                  color: AppColors.dark,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
                 '$levelPercent%',
-                style: AppText.mono(
+                style: AppText.body(
                   fontSize: 13,
-                  color: AppColors.primaryDark,
-                  fontWeight: FontWeight.w600,
+                  color: AppColors.muted,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0.0, end: level % 1),
-            duration: const Duration(milliseconds: 800),
-            curve: Curves.easeOutCubic,
-            builder: (context, value, _) {
-              final filled = value * segments;
-              return Row(
-                children: List.generate(segments, (i) {
-                  final isFilled = i < filled;
-                  final isPartial = !isFilled && i - 1 < filled && filled > i;
-                  return Expanded(
-                    child: Container(
-                      height: 8,
-                      margin: const EdgeInsets.only(right: 3),
-                      decoration: BoxDecoration(
-                        color: isFilled || isPartial
-                            ? AppColors.primary
-                            : AppColors.cardElevated,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  );
-                }),
-              );
-            },
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: (level % 1).clamp(0.0, 1.0),
+              minHeight: 4,
+              backgroundColor: AppColors.cardElevated,
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(AppColors.primary),
+            ),
           ),
         ],
       ),
@@ -402,55 +287,46 @@ class _ProfileCardState extends State<ProfileCard> {
     required IconData icon,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
       decoration: AppCard.decoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(icon, size: 14, color: AppColors.primary),
-              ),
-              const SizedBox(width: 8),
+              Icon(icon, size: 14, color: AppColors.muted),
+              const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   label,
                   overflow: TextOverflow.ellipsis,
-                  style: AppText.mono(
-                    fontSize: 10,
+                  style: AppText.body(
+                    fontSize: 12,
                     color: AppColors.muted,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.2,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text.rich(
             TextSpan(
               children: [
                 TextSpan(
                   text: value,
-                  style: AppText.mono(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
+                  style: AppText.body(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
                     color: AppColors.dark,
                   ),
                 ),
-                const TextSpan(text: ' '),
                 TextSpan(
-                  text: unit,
-                  style: AppText.mono(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.primaryDark,
+                  text: ' $unit',
+                  style: AppText.body(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.muted,
                   ),
                 ),
               ],
@@ -470,12 +346,11 @@ class _ProfileCardState extends State<ProfileCard> {
     return Row(
       children: [
         Text(
-          label.toUpperCase(),
-          style: AppText.mono(
-            fontSize: 10,
+          label,
+          style: AppText.body(
+            fontSize: 13,
             color: AppColors.muted,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.2,
+            fontWeight: FontWeight.w400,
           ),
         ),
         const Spacer(),
@@ -493,41 +368,6 @@ class _ProfileCardState extends State<ProfileCard> {
         ),
       ],
     );
-  }
-}
-
-// Mesure la taille de son enfant après chaque frame (pour aligner les cartes).
-class _MeasureSize extends SingleChildRenderObjectWidget {
-  final ValueChanged<Size> onChange;
-
-  const _MeasureSize({required this.onChange, required super.child});
-
-  @override
-  RenderObject createRenderObject(BuildContext context) {
-    return _RenderMeasureSize(onChange);
-  }
-
-  @override
-  void updateRenderObject(
-      BuildContext context, covariant _RenderMeasureSize renderObject) {
-    renderObject.onChange = onChange;
-  }
-}
-
-class _RenderMeasureSize extends RenderProxyBox {
-  ValueChanged<Size> onChange;
-  Size? _oldSize;
-
-  _RenderMeasureSize(this.onChange);
-
-  @override
-  void performLayout() {
-    super.performLayout();
-    final newSize = child!.size;
-    if (_oldSize == null || _oldSize != newSize) {
-      _oldSize = newSize;
-      WidgetsBinding.instance.addPostFrameCallback((_) => onChange(newSize));
-    }
   }
 }
 

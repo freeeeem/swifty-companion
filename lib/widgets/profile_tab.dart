@@ -35,21 +35,21 @@ class ProfileTab extends StatelessWidget {
           children: [
             const SizedBox(height: 40),
             Container(
-              padding: const EdgeInsets.all(22),
+              padding: const EdgeInsets.all(18),
               decoration: const BoxDecoration(
-                color: AppColors.dangerSoft,
+                color: AppColors.cardElevated,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.error_outline_rounded,
-                color: AppColors.danger,
-                size: 44,
+                color: AppColors.muted,
+                size: 30,
               ),
             ),
             const SizedBox(height: 20),
             Text(
               "Une erreur est survenue",
-              style: AppText.heading(fontSize: 18),
+              style: AppText.heading(fontSize: 16),
             ),
             const SizedBox(height: 8),
             Padding(

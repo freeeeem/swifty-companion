@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
@@ -110,47 +109,42 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBody: true,
-      body: Stack(
-        children: [
-          const Positioned.fill(child: AppBackground()),
-          SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                _buildHeader(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.only(
-                      left: 20.0,
-                      right: 20.0,
-                      top: 8.0,
-                      bottom: 120.0, // espace pour la navbar flottante
-                    ),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 280),
-                      switchInCurve: Curves.easeOutCubic,
-                      switchOutCurve: Curves.easeIn,
-                      transitionBuilder: (child, animation) => FadeTransition(
-                        opacity: animation,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(0, 0.03),
-                            end: Offset.zero,
-                          ).animate(animation),
-                          child: child,
-                        ),
-                      ),
-                      child: KeyedSubtree(
-                        key: ValueKey<int>(_currentIndex),
-                        child: _getCurrentTabWidget(),
-                      ),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(
+                  left: 20.0,
+                  right: 20.0,
+                  top: 8.0,
+                  bottom: 120.0, // espace pour la navbar flottante
+                ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 280),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.03),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
                     ),
                   ),
+                  child: KeyedSubtree(
+                    key: ValueKey<int>(_currentIndex),
+                    child: _getCurrentTabWidget(),
+                  ),
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       bottomNavigationBar: _buildGlassNavBar(),
     );
@@ -170,41 +164,19 @@ class _HomePageState extends State<HomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.mint,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.mint
-                                .withValues(alpha: 0.8),
-                            blurRadius: 8,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _greeting.toUpperCase(),
-                      style: AppText.mono(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.muted,
-                        letterSpacing: 2.2,
-                      ),
-                    ),
-                  ],
+                Text(
+                  _greeting,
+                  style: AppText.body(
+                    fontSize: 12,
+                    color: AppColors.muted,
+                  ),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 2),
                 Text(
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppText.display(fontSize: 26),
+                  style: AppText.heading(fontSize: 19),
                 ),
               ],
             ),
@@ -235,53 +207,22 @@ class _HomePageState extends State<HomePage> {
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  width: 50,
-                  height: 50,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: AppColors.primaryGradient,
-                    boxShadow: [
-                      BoxShadow(
-                        color:
-                            AppColors.primary.withValues(alpha: 0.45),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    border: Border.all(color: AppColors.hairline),
+                    color: AppColors.card,
                   ),
-                  padding: const EdgeInsets.all(2.5),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.background,
-                    ),
-                    child: ClipOval(
-                      child: profile?.avatarUrl != null
-                          ? Image.network(
-                              profile!.avatarUrl!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => _avatarFallback(),
-                            )
-                          : _avatarFallback(),
-                    ),
-                  ),
-                ),
-                // Petit chevron : indice visuel que l'avatar ouvre un menu.
-                Positioned(
-                  right: -1,
-                  bottom: -1,
-                  child: Container(
-                    width: 18,
-                    height: 18,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: AppColors.primaryGradient,
-                    ),
-                    child: const Icon(
-                      Icons.keyboard_arrow_down,
-                      size: 14,
-                      color: AppColors.background,
-                    ),
+                  padding: const EdgeInsets.all(2),
+                  child: ClipOval(
+                    child: profile?.avatarUrl != null
+                        ? Image.network(
+                            profile!.avatarUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => _avatarFallback(),
+                          )
+                        : _avatarFallback(),
                   ),
                 ),
               ],
@@ -345,9 +286,9 @@ class _HomePageState extends State<HomePage> {
 
   Widget _avatarFallback() {
     return Container(
-      color: AppColors.primarySoft,
+      color: AppColors.cardElevated,
       alignment: Alignment.center,
-      child: const Icon(Icons.person, size: 24, color: AppColors.primary),
+      child: const Icon(Icons.person, size: 22, color: AppColors.muted),
     );
   }
 
@@ -362,73 +303,66 @@ class _HomePageState extends State<HomePage> {
       ),
     ];
 
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF0D1220).withValues(alpha: 0.82),
-            border: const Border(
-              top: BorderSide(
-                color: AppColors.hairline,
-                width: 0.5,
-              ),
-            ),
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.background,
+        border: Border(
+          top: BorderSide(
+            color: AppColors.hairline,
+            width: 1,
           ),
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: List.generate(items.length, (index) {
-                  final isSelected = _currentIndex == index;
-                  final item = items[index];
-                  return Expanded(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => _changeTab(index),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 220),
-                        curve: Curves.easeOut,
-                        margin: const EdgeInsets.symmetric(horizontal: 6),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.primary.withValues(alpha: 0.12)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              isSelected ? item.activeIcon : item.icon,
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.muted,
-                              size: 22,
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              item.label,
-                              style: AppText.body(
-                                fontSize: 11.5,
-                                fontWeight: isSelected
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : AppColors.muted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            children: List.generate(items.length, (index) {
+              final isSelected = _currentIndex == index;
+              final item = items[index];
+              return Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _changeTab(index),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.cardElevated
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  );
-                }),
-              ),
-            ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isSelected ? item.activeIcon : item.icon,
+                          color: isSelected
+                              ? AppColors.dark
+                              : AppColors.muted,
+                          size: 22,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          item.label,
+                          style: AppText.body(
+                            fontSize: 11,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                            color: isSelected
+                                ? AppColors.dark
+                                : AppColors.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
           ),
         ),
       ),

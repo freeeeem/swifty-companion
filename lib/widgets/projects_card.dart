@@ -22,12 +22,9 @@ class GroupedProjectDisplayItem extends ProjectDisplayItem {
   });
 }
 
-/// Carte Projets autonome : recherche locale, filtres de statut, tri
-/// recents/anciens et groupes repliables.
-///
-/// Stateful dedie : le focus du champ de recherche et les filtres survivent
-/// aux reconstructions du parent (et le radar parent n'est pas relance a
-/// chaque frappe).
+/// Carte Projets : titre + actions (recherche ouvrable, tri), chips de
+/// statut sobres, liste sobre. La barre de recherche ne prend de la place
+/// que quand elle est ouverte.
 class ProjectsCard extends StatefulWidget {
   final List<ProjectItem> allProjects;
 
@@ -40,13 +37,16 @@ class ProjectsCard extends StatefulWidget {
 class _ProjectsCardState extends State<ProjectsCard> {
   final Set<String> _expandedGroups = {};
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
   String _query = '';
+  bool _searchOpen = false;
   int _statusFilter = 0; // 0 tous, 1 valides, 2 echoues, 3 en cours
   bool _newestFirst = true;
 
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -123,88 +123,92 @@ class _ProjectsCardState extends State<ProjectsCard> {
     return combined;
   }
 
+  void _toggleSearch() {
+    setState(() {
+      _searchOpen = !_searchOpen;
+      if (_searchOpen) {
+        _searchFocus.requestFocus();
+      } else {
+        _searchController.clear();
+        _query = '';
+        _searchFocus.unfocus();
+      }
+    });
+  }
+
   Widget _chip(int value, String label) {
     final selected = _statusFilter == value;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _statusFilter = value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.cardElevated,
-          borderRadius: BorderRadius.circular(20),
+          color: selected ? AppColors.dark : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: selected ? AppColors.primary : AppColors.hairline,
+            color: selected ? AppColors.dark : AppColors.hairline,
           ),
         ),
         child: Text(
           label,
-          style: AppText.mono(
-            fontSize: 11,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color: selected ? AppColors.background : AppColors.darkSoft,
+          style: AppText.body(
+            fontSize: 12,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            color: selected ? AppColors.background : AppColors.muted,
           ),
         ),
       ),
     );
   }
 
-  Widget _mark(bool ok, String mark, {double fontSize = 12}) {
-    final color = ok ? AppColors.success : AppColors.danger;
+  Widget _mark(bool ok, String mark, {bool inProgress = false}) {
+    final Color color;
+    final String text;
+    if (inProgress) {
+      color = AppColors.primary;
+      text = 'En cours';
+    } else {
+      color = ok ? AppColors.success : AppColors.muted;
+      text = mark;
+    }
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(ok ? Icons.check_rounded : Icons.close_rounded,
-            color: color, size: fontSize + 3),
-        const SizedBox(width: 4),
-        Text(mark,
-            style: AppText.mono(
-                fontSize: fontSize, fontWeight: FontWeight.w700, color: color)),
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(text,
+            style: AppText.body(
+                fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.darkSoft)),
       ],
     );
   }
 
   Widget _singleRow(ProjectItem p) {
+    final inProgress = p.status == 'in_progress';
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 9),
+      padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AppColors.divider, width: 0.75)),
       ),
       child: Row(
         children: [
-          Expanded(child: _projectName(p.name)),
+          Expanded(
+            child: Text(p.name,
+                overflow: TextOverflow.ellipsis,
+                style: AppText.body(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.dark)),
+          ),
           const SizedBox(width: 8),
-          _mark(p.validated == true, p.finalMark?.toString() ?? '-'),
+          _mark(p.validated == true, p.finalMark?.toString() ?? '-', inProgress: inProgress),
         ],
       ),
-    );
-  }
-
-  Widget _projectName(String name) {
-    final q = _query.trim();
-    final base = AppText.body(
-        fontSize: 13.5, fontWeight: FontWeight.w500, color: AppColors.dark);
-    if (q.isEmpty) {
-      return Text(name, overflow: TextOverflow.ellipsis, style: base);
-    }
-    final start = name.toLowerCase().indexOf(q.toLowerCase());
-    if (start < 0) {
-      return Text(name, overflow: TextOverflow.ellipsis, style: base);
-    }
-    final end = start + q.length;
-    return Text.rich(
-      TextSpan(children: [
-        TextSpan(text: name.substring(0, start)),
-        TextSpan(
-            text: name.substring(start, end),
-            style: const TextStyle(
-                backgroundColor: AppColors.primarySoft,
-                color: AppColors.primary,
-                fontWeight: FontWeight.w700)),
-        TextSpan(text: name.substring(end)),
-      ], style: base),
-      overflow: TextOverflow.ellipsis,
     );
   }
 
@@ -230,61 +234,47 @@ class _ProjectsCardState extends State<ProjectsCard> {
               });
             },
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 9),
+              padding: const EdgeInsets.symmetric(vertical: 10),
               child: Row(
                 children: [
-                  AnimatedRotation(
-                    turns: open ? 0.25 : 0.0,
-                    duration: const Duration(milliseconds: 150),
-                    child: const Icon(Icons.chevron_right_rounded,
-                        size: 18, color: AppColors.muted),
-                  ),
+                  Icon(open ? Icons.expand_more_rounded : Icons.chevron_right_rounded,
+                      size: 18, color: AppColors.muted),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(g.groupName,
                         overflow: TextOverflow.ellipsis,
                         style: AppText.body(
                             fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                             color: AppColors.dark)),
                   ),
                   const SizedBox(width: 8),
                   Text('$okCount/${g.projects.length}',
-                      style: AppText.mono(
-                          fontSize: 11,
-                          color: AppColors.muted,
-                          fontWeight: FontWeight.w600)),
+                      style: AppText.body(
+                          fontSize: 12, color: AppColors.muted, fontWeight: FontWeight.w400)),
                 ],
               ),
             ),
           ),
-          AnimatedCrossFade(
-            duration: const Duration(milliseconds: 200),
-            sizeCurve: Curves.easeOut,
-            crossFadeState:
-                open ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            firstChild: const SizedBox(width: double.infinity),
-            secondChild: Column(
-              children: g.projects.map((p) {
-                return Padding(
-                  padding: const EdgeInsets.only(left: 22, top: 2, bottom: 7),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(p.name,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppText.body(
-                                fontSize: 12.5, color: AppColors.muted)),
-                      ),
-                      const SizedBox(width: 8),
-                      _mark(p.validated == true, p.finalMark?.toString() ?? '-',
-                          fontSize: 11),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
+          if (open)
+            ...g.projects.map((p) {
+              final inProgress = p.status == 'in_progress';
+              return Padding(
+                padding: const EdgeInsets.only(left: 22, top: 2, bottom: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(p.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.body(fontSize: 12.5, color: AppColors.muted)),
+                    ),
+                    const SizedBox(width: 8),
+                    _mark(p.validated == true, p.finalMark?.toString() ?? '-',
+                        inProgress: inProgress),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
     );
@@ -295,88 +285,72 @@ class _ProjectsCardState extends State<ProjectsCard> {
     final displayItems = _group(_filtered);
     final bool isFiltered = _query.trim().isNotEmpty || _statusFilter != 0;
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
       decoration: AppCard.decoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Projets', style: AppText.heading(fontSize: 16)),
-              Row(
-                children: [
-                  Text(
-                    '${_filtered.length}/${widget.allProjects.length}',
-                    style: AppText.mono(
-                        fontSize: 11,
-                        color: AppColors.muted,
-                        fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(width: 6),
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() => _newestFirst = !_newestFirst),
-                    child: Row(
-                      children: [
-                        Icon(
-                          _newestFirst
-                              ? Icons.arrow_downward_rounded
-                              : Icons.arrow_upward_rounded,
-                          size: 13,
-                          color: AppColors.primary,
-                        ),
-                        const SizedBox(width: 2),
-                        Text(
-                          _newestFirst ? 'Recents' : 'Anciens',
-                          style: AppText.mono(
-                              fontSize: 10.5,
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              Text('Projets', style: AppText.heading(fontSize: 15)),
+              const SizedBox(width: 8),
+              Text(
+                '${_filtered.length}',
+                style: AppText.body(fontSize: 12, color: AppColors.muted),
+              ),
+              const Spacer(),
+              IconButton(
+                tooltip: _newestFirst ? 'Trier : recents' : 'Trier : anciens',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => setState(() => _newestFirst = !_newestFirst),
+                icon: Icon(
+                  _newestFirst ? Icons.south_rounded : Icons.north_rounded,
+                  size: 18,
+                  color: AppColors.muted,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Rechercher',
+                visualDensity: VisualDensity.compact,
+                onPressed: _toggleSearch,
+                icon: Icon(
+                  _searchOpen ? Icons.close_rounded : Icons.search_rounded,
+                  size: 18,
+                  color: _searchOpen ? AppColors.dark : AppColors.muted,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _searchController,
-            onChanged: (v) => setState(() => _query = v),
-            style: AppText.body(fontSize: 13.5),
-            decoration: InputDecoration(
-              hintText: 'Filtrer les projets...',
-              hintStyle: AppText.body(fontSize: 13, color: AppColors.mutedLight),
-              prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.muted),
-              suffixIcon: _query.isEmpty
-                  ? null
-                  : GestureDetector(
-                      onTap: () {
-                        _searchController.clear();
-                        setState(() => _query = '');
-                      },
-                      child: const Icon(Icons.clear_rounded, size: 17, color: AppColors.muted),
-                    ),
-              filled: true,
-              fillColor: AppColors.cardElevated,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.hairline),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.hairline),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.6)),
+          if (_searchOpen) ...[
+            const SizedBox(height: 8),
+            TextField(
+              controller: _searchController,
+              focusNode: _searchFocus,
+              onChanged: (v) => setState(() => _query = v),
+              style: AppText.body(fontSize: 13.5),
+              decoration: InputDecoration(
+                hintText: 'Filtrer les projets...',
+                hintStyle: AppText.body(fontSize: 13, color: AppColors.mutedLight),
+                prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.muted),
+                filled: true,
+                fillColor: AppColors.cardElevated,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.hairline),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.hairline),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.primary),
+                ),
               ),
             ),
-          ),
+          ],
           const SizedBox(height: 10),
           Wrap(
             spacing: 6,
@@ -388,7 +362,7 @@ class _ProjectsCardState extends State<ProjectsCard> {
               _chip(3, 'En cours'),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           if (displayItems.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 20),

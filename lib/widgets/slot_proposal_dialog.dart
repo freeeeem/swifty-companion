@@ -153,10 +153,9 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
       '${(minutes ~/ 60).toString().padLeft(2, '0')}:${(minutes % 60).toString().padLeft(2, '0')}';
 
   String _formatSummary(DateTime begin, DateTime end) {
-    const weekdays = ['LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM'];
+    const weekdays = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'];
     return '${weekdays[begin.weekday - 1]} ${begin.day} '
-        '${_dialogMonths[begin.month - 1].substring(0, 3).toUpperCase()} '
-        '· ${_formatTime(begin.hour * 60 + begin.minute)} → '
+        '${_dialogMonths[begin.month - 1]} · ${_formatTime(begin.hour * 60 + begin.minute)} → '
         '${_formatTime(end.hour * 60 + end.minute)}';
   }
 
@@ -174,7 +173,7 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.hairline),
       ),
       child: SingleChildScrollView(
@@ -188,11 +187,11 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
             const SizedBox(height: 12),
             _buildCalendarGrid(today),
             const SizedBox(height: 16),
-            _buildSectionLabel('HEURE DE DÉBUT'),
+            _buildSectionLabel('Heure de début'),
             const SizedBox(height: 8),
             _buildTimeChips(),
             const SizedBox(height: 16),
-            _buildSectionLabel('DURÉE'),
+            _buildSectionLabel('Durée'),
             const SizedBox(height: 8),
             _buildDurationChips(),
             const SizedBox(height: 20),
@@ -208,12 +207,11 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
       children: [
         Expanded(
           child: Text(
-            'PROPOSER UNE DISPONIBILITÉ',
-            style: AppText.mono(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primary,
-              letterSpacing: 2,
+            'Nouvelle disponibilité',
+            style: AppText.body(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppColors.dark,
             ),
           ),
         ),
@@ -232,11 +230,10 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
   Widget _buildSectionLabel(String label) {
     return Text(
       label,
-      style: AppText.mono(
-        fontSize: 10,
-        fontWeight: FontWeight.w600,
+      style: AppText.body(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
         color: AppColors.muted,
-        letterSpacing: 1.5,
       ),
     );
   }
@@ -251,14 +248,12 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
         ),
         Expanded(
           child: Text(
-            '${_dialogMonths[_visibleMonth.month - 1]} ${_visibleMonth.year}'
-                .toUpperCase(),
+            '${_dialogMonths[_visibleMonth.month - 1]} ${_visibleMonth.year}',
             textAlign: TextAlign.center,
-            style: AppText.mono(
+            style: AppText.body(
               fontSize: 13,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
               color: AppColors.dark,
-              letterSpacing: 1.5,
             ),
           ),
         ),
@@ -297,9 +292,8 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
                 child: Center(
                   child: Text(
                     label,
-                    style: AppText.mono(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
+                    style: AppText.body(
+                      fontSize: 11,
                       color: AppColors.mutedLight,
                     ),
                   ),
@@ -353,18 +347,18 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: isSelected ? AppColors.primaryGradient : null,
+              color: isSelected ? AppColors.dark : Colors.transparent,
               border: !isSelected && isToday
-                  ? Border.all(color: AppColors.primary, width: 1.2)
+                  ? Border.all(color: AppColors.muted)
                   : null,
             ),
             child: Text(
               '${day.day}',
-              style: AppText.mono(
-                fontSize: 12.5,
+              style: AppText.body(
+                fontSize: 13,
                 fontWeight: isSelected || isToday
-                    ? FontWeight.w700
-                    : FontWeight.w500,
+                    ? FontWeight.w600
+                    : FontWeight.w400,
                 color: isSelected
                     ? AppColors.background
                     : (isDisabled ? AppColors.mutedLight : AppColors.dark),
@@ -451,17 +445,17 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.cardElevated,
-          borderRadius: BorderRadius.circular(9),
+          color: selected ? AppColors.dark : AppColors.cardElevated,
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: selected ? AppColors.primary : AppColors.hairline,
+            color: selected ? AppColors.dark : AppColors.hairline,
           ),
         ),
         child: Text(
           label,
-          style: AppText.mono(
-            fontSize: 12,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          style: AppText.body(
+            fontSize: 12.5,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
             color: selected ? AppColors.background : AppColors.darkSoft,
           ),
         ),
@@ -485,11 +479,10 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
             isValid
                 ? _formatSummary(begin, end)
                 : 'Choisis un jour et une heure',
-            style: AppText.mono(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w600,
-              color: isValid ? AppColors.primary : AppColors.muted,
-              letterSpacing: 1,
+            style: AppText.body(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: isValid ? AppColors.dark : AppColors.muted,
             ),
           ),
         ),

@@ -102,20 +102,13 @@ class _SearchTabState extends State<SearchTab> {
         return Container(
           decoration: BoxDecoration(
             color: AppColors.card,
-            borderRadius: BorderRadius.circular(30),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: _searchFocus.hasFocus
-                  ? AppColors.primary.withValues(alpha: 0.6)
+                  ? AppColors.primary
                   : AppColors.hairline,
-              width: 1.5,
+              width: 1,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
           child: TextField(
             controller: _searchController,
@@ -176,21 +169,21 @@ class _SearchTabState extends State<SearchTab> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              color: AppColors.primarySoft,
+            padding: const EdgeInsets.all(18),
+            decoration: const BoxDecoration(
+              color: AppColors.cardElevated,
               shape: BoxShape.circle,
             ),
             child: const Icon(
-              Icons.person_search_rounded,
-              size: 44,
-              color: AppColors.primary,
+              Icons.search_rounded,
+              size: 30,
+              color: AppColors.muted,
             ),
           ),
           const SizedBox(height: 20),
           Text(
             "Rechercher un étudiant",
-            style: AppText.heading(fontSize: 18),
+            style: AppText.heading(fontSize: 16),
           ),
           const SizedBox(height: 8),
           Padding(
@@ -218,23 +211,23 @@ class _SearchTabState extends State<SearchTab> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(22),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: isEmptyResult ? AppColors.divider : AppColors.dangerSoft,
+              color: AppColors.cardElevated,
               shape: BoxShape.circle,
             ),
             child: Icon(
               isEmptyResult
-                  ? Icons.person_off_rounded
+                  ? Icons.search_off_rounded
                   : Icons.error_outline_rounded,
-              size: 44,
-              color: isEmptyResult ? AppColors.muted : AppColors.danger,
+              size: 30,
+              color: AppColors.muted,
             ),
           ),
           const SizedBox(height: 20),
           Text(
             isEmptyResult ? "Aucun résultat" : "Une erreur est survenue",
-            style: AppText.heading(fontSize: 18),
+            style: AppText.heading(fontSize: 16),
           ),
           const SizedBox(height: 8),
           Padding(

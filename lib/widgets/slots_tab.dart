@@ -256,8 +256,8 @@ class _SlotsTabState extends State<SlotsTab> {
   }
 
   /// Carte résumé : points de correction + compteur de disponibilités à
-  /// venir (libres / réservées). Les chiffres se mettent à jour après
-  /// chaque chargement, création ou suppression.
+  /// venir (libres / réservées). Sobre : texte + chiffres, pas d'icône
+  /// décorative ni de pastille colorée.
   Widget _buildSummaryCard() {
     final now = DateTime.now();
     final upcoming = _slots
@@ -273,55 +273,25 @@ class _SlotsTabState extends State<SlotsTab> {
         children: [
           Row(
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.handshake_outlined,
-                  color: AppColors.primary,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'POINTS DE CORRECTION',
-                      style: AppText.mono(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
+                      'Points de correction',
+                      style: AppText.body(
+                        fontSize: 12,
                         color: AppColors.muted,
-                        letterSpacing: 1.5,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text(
-                          '${widget.myProfile.correctionPoints}',
-                          style: AppText.mono(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.dark,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'disponibles',
-                          style: AppText.body(
-                            fontSize: 13,
-                            color: AppColors.muted,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 2),
+                    Text(
+                      '${widget.myProfile.correctionPoints} disponibles',
+                      style: AppText.body(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.dark,
+                      ),
                     ),
                   ],
                 ),
@@ -342,23 +312,21 @@ class _SlotsTabState extends State<SlotsTab> {
               Expanded(
                 child: _summaryStat(
                   value: '${upcoming.length}',
-                  label: 'CRÉNEAUX À VENIR',
+                  label: 'À venir',
                 ),
               ),
               Container(width: 1, height: 30, color: AppColors.divider),
               Expanded(
                 child: _summaryStat(
                   value: '$freeCount',
-                  label: 'LIBRES',
-                  valueColor: AppColors.success,
+                  label: 'Libres',
                 ),
               ),
               Container(width: 1, height: 30, color: AppColors.divider),
               Expanded(
                 child: _summaryStat(
                   value: '$bookedCount',
-                  label: 'RÉSERVÉS',
-                  valueColor: AppColors.primary,
+                  label: 'Réservés',
                 ),
               ),
             ],
@@ -371,26 +339,23 @@ class _SlotsTabState extends State<SlotsTab> {
   Widget _summaryStat({
     required String value,
     required String label,
-    Color valueColor = AppColors.dark,
   }) {
     return Column(
       children: [
         Text(
           value,
-          style: AppText.mono(
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: valueColor,
+          style: AppText.body(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: AppColors.dark,
           ),
         ),
         const SizedBox(height: 2),
         Text(
           label,
-          style: AppText.mono(
-            fontSize: 9,
-            fontWeight: FontWeight.w600,
+          style: AppText.body(
+            fontSize: 12,
             color: AppColors.muted,
-            letterSpacing: 1.2,
           ),
         ),
       ],
@@ -404,12 +369,11 @@ class _SlotsTabState extends State<SlotsTab> {
       children: [
         Expanded(
           child: Text(
-            'CALENDRIER',
-            style: AppText.mono(
-              fontSize: 11,
+            'Calendrier',
+            style: AppText.body(
+              fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: AppColors.muted,
-              letterSpacing: 2,
+              color: AppColors.dark,
             ),
           ),
         ),
@@ -496,14 +460,12 @@ class _SlotsTabState extends State<SlotsTab> {
         width: 54,
         margin: const EdgeInsets.only(right: 8),
         decoration: BoxDecoration(
-          gradient: isSelected ? AppColors.primaryGradient : null,
-          color: isSelected ? null : AppColors.card,
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? AppColors.dark : AppColors.card,
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected
-                ? Colors.transparent
-                : (isToday ? AppColors.primary : AppColors.hairline),
-            width: isToday && !isSelected ? 1.2 : 1,
+                ? AppColors.dark
+                : (isToday ? AppColors.muted : AppColors.hairline),
           ),
         ),
         child: Column(
@@ -511,30 +473,33 @@ class _SlotsTabState extends State<SlotsTab> {
           children: [
             Text(
               _weekdaysShort[day.weekday - 1],
-              style: AppText.mono(
-                fontSize: 9.5,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? AppColors.background : AppColors.muted,
-                letterSpacing: 1,
+              style: AppText.body(
+                fontSize: 10,
+                fontWeight: FontWeight.w400,
+                color: isSelected
+                    ? AppColors.background.withValues(alpha: 0.7)
+                    : AppColors.muted,
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 4),
             Text(
               '${day.day}',
-              style: AppText.mono(
+              style: AppText.body(
                 fontSize: 15,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: isSelected ? AppColors.background : AppColors.dark,
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 4),
             Container(
               width: 4,
               height: 4,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: hasActivity
-                    ? (isSelected ? AppColors.background : AppColors.primary)
+                    ? (isSelected
+                        ? AppColors.background
+                        : AppColors.primary)
                     : Colors.transparent,
               ),
             ),
@@ -596,15 +561,14 @@ class _SlotsTabState extends State<SlotsTab> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _formatDayTitle(_selectedDay).toUpperCase(),
-          style: AppText.mono(
-            fontSize: 11,
+          _formatDayTitle(_selectedDay),
+          style: AppText.body(
+            fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: AppColors.muted,
-            letterSpacing: 2,
+            color: AppColors.dark,
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         _buildSlotsSection(slots),
       ],
     );
@@ -624,22 +588,21 @@ class _SlotsTabState extends State<SlotsTab> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _dayFilter = value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.cardElevated,
-          borderRadius: BorderRadius.circular(20),
+          color: selected ? AppColors.dark : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: selected ? AppColors.primary : AppColors.hairline,
+            color: selected ? AppColors.dark : AppColors.hairline,
           ),
         ),
         child: Text(
           label,
-          style: AppText.mono(
-            fontSize: 11,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-            color: selected ? AppColors.background : AppColors.darkSoft,
+          style: AppText.body(
+            fontSize: 12,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            color: selected ? AppColors.background : AppColors.muted,
           ),
         ),
       ),
@@ -651,21 +614,9 @@ class _SlotsTabState extends State<SlotsTab> {
       children: [
         Text(title, style: AppText.heading(fontSize: 15)),
         const SizedBox(width: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: AppColors.cardElevated,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.hairline),
-          ),
-          child: Text(
-            '$count',
-            style: AppText.mono(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppColors.muted,
-            ),
-          ),
+        Text(
+          '$count',
+          style: AppText.body(fontSize: 12, color: AppColors.muted),
         ),
       ],
     );
@@ -714,26 +665,26 @@ class _SlotsTabState extends State<SlotsTab> {
 
     final card = Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: AppCard.decoration(),
       child: Row(
         children: [
           Text(
             '${_formatTime(slot.beginAt.toLocal())} — '
             '${_formatTime(slot.endAt.toLocal())}',
-            style: AppText.mono(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
+            style: AppText.body(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w500,
               color: AppColors.dark,
             ),
           ),
           const Spacer(),
           if (slot.isBooked)
-            const StatusPill(label: 'RÉSERVÉ', color: AppColors.primary)
+            const StatusPill(label: 'Réservé', color: AppColors.primary)
           else if (isPast)
-            const StatusPill(label: 'PASSÉ', color: AppColors.muted)
+            const StatusPill(label: 'Passé', color: AppColors.muted)
           else
-            const StatusPill(label: 'LIBRE', color: AppColors.success),
+            const StatusPill(label: 'Libre', color: AppColors.success),
           if (canDelete) ...[
             const SizedBox(width: 8),
             IconButton(
@@ -768,7 +719,7 @@ class _SlotsTabState extends State<SlotsTab> {
           padding: const EdgeInsets.only(right: 18),
           decoration: BoxDecoration(
             color: AppColors.dangerSoft,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.danger),
           ),
           child: const Icon(
@@ -864,8 +815,7 @@ class _SlotsTabState extends State<SlotsTab> {
   }
 }
 
-/// Bouton compact « Proposer » du header Slots : même dégradé que le
-/// [PrimaryButton] mais en pilule, avec état de chargement intégré.
+/// Bouton compact « Proposer » : fond accent uni, texte blanc, coins 8px.
 class _CompactProposeButton extends StatelessWidget {
   final bool busy;
   final VoidCallback onPressed;
@@ -879,27 +829,14 @@ class _CompactProposeButton extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: busy ? null : onPressed,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 150),
+        child: Opacity(
           opacity: busy ? 0.55 : 1,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              gradient: busy ? null : AppColors.primaryGradient,
-              color: busy ? AppColors.cardElevated : null,
-              borderRadius: BorderRadius.circular(20),
-              border: busy
-                  ? Border.all(color: AppColors.hairline)
-                  : null,
-              boxShadow: busy
-                  ? null
-                  : [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.35),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+              color:
+                  busy ? AppColors.cardElevated : AppColors.primary,
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -914,17 +851,17 @@ class _CompactProposeButton extends StatelessWidget {
                   const Icon(
                     Icons.add_rounded,
                     size: 16,
-                    color: AppColors.background,
+                    color: Colors.white,
                   ),
                 const SizedBox(width: 6),
                 Text(
                   'Proposer',
                   style: AppText.body(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                     color: busy
                         ? AppColors.mutedLight
-                        : AppColors.background,
+                        : Colors.white,
                   ),
                 ),
               ],
