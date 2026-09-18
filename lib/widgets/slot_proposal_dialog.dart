@@ -127,9 +127,18 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
   }
 
   void _shiftMonth(int direction) {
+    // Le calendrier des créneaux couvre J → J+45 : le dialog ne propose
+    // pas de mois passé ni de mois entièrement hors fenêtre.
+    final now = DateTime.now();
+    final firstMonth = DateTime(now.year, now.month);
+    final lastDay = DateTime(now.year, now.month, now.day)
+        .add(const Duration(days: 45));
+    final lastMonth = DateTime(lastDay.year, lastDay.month);
+    final target =
+        DateTime(_visibleMonth.year, _visibleMonth.month + direction);
+    if (target.isBefore(firstMonth) || target.isAfter(lastMonth)) return;
     setState(() {
-      _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + direction);
-      final now = DateTime.now();
+      _visibleMonth = target;
       final isCurrentMonth =
           _visibleMonth.year == now.year && _visibleMonth.month == now.month;
       if (isCurrentMonth) {
@@ -323,12 +332,18 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
   Widget _buildDayCell(DateTime day, DateTime today) {
     final dateOnly = DateTime(day.year, day.month, day.day);
     final isPast = dateOnly.isBefore(today);
+    // Hors fenêtre J → J+45 : même traitement visuel que le passé.
+    final maxDay = DateTime(today.year, today.month, today.day)
+        .add(const Duration(days: 45));
+    final isBeyondWindow = dateOnly.isAfter(maxDay);
+    final isDisabled = isPast || isBeyondWindow;
     final isSelected = _selectedDay == day.day;
     final isToday = dateOnly == today;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: isPast ? null : () => setState(() => _selectedDay = day.day),
+      onTap:
+          isDisabled ? null : () => setState(() => _selectedDay = day.day),
       child: SizedBox(
         height: 38,
         child: Center(
@@ -352,7 +367,7 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
                     : FontWeight.w500,
                 color: isSelected
                     ? AppColors.background
-                    : (isPast ? AppColors.mutedLight : AppColors.dark),
+                    : (isDisabled ? AppColors.mutedLight : AppColors.dark),
               ),
             ),
           ),
@@ -480,29 +495,16 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 44,
-          child: FilledButton(
+          height: 48,
+          child: PrimaryButton(
+            label: 'Proposer',
+            icon: Icons.add_rounded,
             onPressed: isValid
                 ? () => Navigator.pop(
                     context,
                     SlotProposal(beginAt: begin, endAt: end),
                   )
                 : null,
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              disabledBackgroundColor: AppColors.cardElevated,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: Text(
-              'Proposer',
-              style: AppText.body(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: isValid ? AppColors.background : AppColors.mutedLight,
-              ),
-            ),
           ),
         ),
       ],

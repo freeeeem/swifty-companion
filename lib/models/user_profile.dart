@@ -44,6 +44,10 @@ class UserProfile {
   final String email;
   final String? avatarUrl;
   final String campus;
+
+  /// Emplacement de cluster brut (ex. "c1r2s3") ou null si indisponible.
+  /// Sert au header (pastille + ligne "En ce moment") — voir UserProfile.fromJson.
+  final String? location;
   final double level;
   final int levelInt;
   final int levelPercent;
@@ -61,6 +65,7 @@ class UserProfile {
     required this.email,
     this.avatarUrl,
     required this.campus,
+    this.location,
     required this.level,
     required this.levelInt,
     required this.levelPercent,
@@ -93,6 +98,15 @@ class UserProfile {
     final String campus = campusCountry.isNotEmpty
         ? '$campusName, $campusCountry'
         : campusName;
+
+    // Emplacement de cluster ("location") : poste occupé (ex. "c1r2s3"),
+    // null quand l'étudiant n'est pas connecté sur un Mac du cluster.
+    // C'est la seule vraie info "en ligne" exposée par l'API profil.
+    final dynamic rawLocation = json['location'];
+    final String? location =
+        rawLocation is String && rawLocation.trim().isNotEmpty
+            ? rawLocation.trim()
+            : null;
 
     // Cursus & Level
     final List<dynamic> cursusList = json['cursus_users'] ?? [];
@@ -141,6 +155,7 @@ class UserProfile {
       email: email,
       avatarUrl: avatarUrl,
       campus: campus,
+      location: location,
       level: level,
       levelInt: levelInt,
       levelPercent: levelPercent,

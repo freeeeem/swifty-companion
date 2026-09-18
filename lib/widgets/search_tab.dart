@@ -252,28 +252,18 @@ class _SearchTabState extends State<SearchTab> {
             ),
           ),
           const SizedBox(height: 24),
-          OutlinedButton.icon(
-            onPressed: () {
-              setState(() {
-                _searchError = null;
-              });
-              _searchFocus.requestFocus();
-            },
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.dark,
-              side: const BorderSide(color: AppColors.divider),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 12,
-              ),
-            ),
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: Text(
-              "Réessayer",
-              style: AppText.body(fontWeight: FontWeight.w600),
+          // Même CTA que les autres écrans d'erreur (design system).
+          SizedBox(
+            width: 220,
+            child: PrimaryButton(
+              label: 'Réessayer',
+              icon: Icons.refresh_rounded,
+              onPressed: () {
+                setState(() {
+                  _searchError = null;
+                });
+                _searchFocus.requestFocus();
+              },
             ),
           ),
         ],

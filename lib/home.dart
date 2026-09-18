@@ -8,7 +8,6 @@ import 'theme.dart';
 import 'widgets/profile_tab.dart';
 import 'widgets/search_tab.dart';
 import 'widgets/slots_tab.dart';
-import 'widgets/settings_tab.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});

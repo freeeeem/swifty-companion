@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Design system centralisé de l'application — Dark premium « 42 ».
 /// Direction : fond encre profonde + halos teal/bleu, cartes verre dépoli,
@@ -274,10 +273,20 @@ class SectionHeader extends StatelessWidget {
   }
 }
 
-/// Helpers typographiques : Roboto pour le texte, JetBrains Mono pour
-/// les chiffres, logins et badges (esprit terminal 42).
+/// Helpers typographiques : police système pour le texte, pile monospace
+/// pour les chiffres, logins et badges (esprit terminal 42).
+/// Volontairement sans dépendance réseau (ex-GoogleFonts) : pas de
+/// téléchargement de fonte au runtime, rendu identique hors-ligne et
+/// sans jank sur le simulateur iOS.
 class AppText {
   AppText._();
+
+  static const List<String> _monoFallbacks = [
+    'JetBrains Mono',
+    'Menlo',
+    'Consolas',
+    'monospace',
+  ];
 
   static TextStyle mono({
     double fontSize = 13,
@@ -286,7 +295,9 @@ class AppText {
     double? letterSpacing,
     double? height,
   }) {
-    return GoogleFonts.jetBrainsMono(
+    return TextStyle(
+      fontFamily: 'JetBrains Mono',
+      fontFamilyFallback: _monoFallbacks,
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -302,7 +313,7 @@ class AppText {
     double height = 1.4,
     FontStyle fontStyle = FontStyle.normal,
   }) {
-    return GoogleFonts.roboto(
+    return TextStyle(
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -316,7 +327,7 @@ class AppText {
     FontWeight fontWeight = FontWeight.w700,
     Color color = AppColors.dark,
   }) {
-    return GoogleFonts.roboto(
+    return TextStyle(
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -330,7 +341,7 @@ class AppText {
     FontWeight fontWeight = FontWeight.w800,
     Color color = AppColors.dark,
   }) {
-    return GoogleFonts.roboto(
+    return TextStyle(
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
@@ -397,19 +408,24 @@ class PrimaryButton extends StatelessWidget {
                 ),
               )
             : Row(
+                mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (icon != null) ...[
                     Icon(icon, size: 19, color: AppColors.background),
                     const SizedBox(width: 10),
                   ],
-                  Text(
-                    label,
-                    style: AppText.body(
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w700,
-                      color:
-                          enabled ? AppColors.background : AppColors.mutedLight,
+                  Flexible(
+                    child: Text(
+                      label,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: AppText.body(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w700,
+                        color:
+                            enabled ? AppColors.background : AppColors.mutedLight,
+                      ),
                     ),
                   ),
                 ],
@@ -493,7 +509,7 @@ class AppTheme {
     );
 
     return base.copyWith(
-      textTheme: GoogleFonts.robotoTextTheme(base.textTheme).apply(
+      textTheme: base.textTheme.apply(
         bodyColor: AppColors.dark,
         displayColor: AppColors.dark,
       ),

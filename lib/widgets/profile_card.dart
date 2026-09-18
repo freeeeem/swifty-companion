@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderProxyBox;
 import '../models/user_profile.dart';
 import '../theme.dart';
+import 'projects_card.dart';
 import 'skills_radar_chart.dart';
 
 class ProfileCard extends StatefulWidget {
@@ -14,8 +15,6 @@ class ProfileCard extends StatefulWidget {
 }
 
 class _ProfileCardState extends State<ProfileCard> {
-  final Set<String> _expandedGroups = {};
-
   /// Hauteur mesurée de la carte Projets, réutilisée pour la carte
   /// Compétences afin que les deux cartes soient strictement égales.
   double? _projectsCardHeight;
@@ -23,18 +22,14 @@ class _ProfileCardState extends State<ProfileCard> {
   @override
   Widget build(BuildContext context) {
     final profile = widget.profile;
-    final String displayName = profile.displayName;
-    final String login = profile.login;
     final String email = profile.email;
-    final String? avatarUrl = profile.avatarUrl;
-    final String campus = profile.campus;
     final double level = profile.level;
     final int levelInt = profile.levelInt;
     final int levelPercent = profile.levelPercent;
     final int wallet = profile.wallet;
     final int correctionsPoints = profile.correctionPoints;
     final List<ProjectItem> allProjects = profile.projects
-        .where((p) => p.finalMark != null)
+        .where((p) => p.finalMark != null || p.status == 'in_progress')
         .toList()
       ..sort((a, b) => (b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0))
           .compareTo(a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0)));
@@ -43,7 +38,7 @@ class _ProfileCardState extends State<ProfileCard> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         const SizedBox(height: 8),
-        _buildHeaderCard(displayName, login, campus, avatarUrl, levelInt),
+        _buildHeaderCard(profile),
         const SizedBox(height: 12),
         _buildLevelCard(level, levelInt, levelPercent),
         const SizedBox(height: 12),
@@ -54,6 +49,7 @@ class _ProfileCardState extends State<ProfileCard> {
                 value: '$wallet',
                 unit: '₳',
                 label: 'WALLET',
+                icon: Icons.account_balance_wallet_rounded,
               ),
             ),
             const SizedBox(width: 12),
@@ -62,6 +58,7 @@ class _ProfileCardState extends State<ProfileCard> {
                 value: '$correctionsPoints',
                 unit: 'pts',
                 label: 'CORRECTION',
+                icon: Icons.fact_check_rounded,
               ),
             ),
           ],
@@ -79,7 +76,7 @@ class _ProfileCardState extends State<ProfileCard> {
               const Divider(height: 20, color: AppColors.divider),
               _buildInfoRow(
                 label: 'Campus',
-                value: campus,
+                value: profile.campus,
               ),
             ],
           ),
@@ -88,62 +85,9 @@ class _ProfileCardState extends State<ProfileCard> {
         LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth > 580;
-            final displayItems = _groupProjects(allProjects);
-
-            final projectsCard = Container(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-              decoration: AppCard.decoration(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("Projets", style: AppText.heading(fontSize: 16)),
-                      Text(
-                        '${allProjects.length} projets',
-                        style: AppText.mono(
-                          fontSize: 11,
-                          color: AppColors.muted,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  if (displayItems.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24),
-                      child: Center(
-                        child: Text(
-                          "Aucun projet",
-                          style: AppText.body(
-                            color: AppColors.muted,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      padding: EdgeInsets.zero,
-                      itemCount: displayItems.length,
-                      itemBuilder: (context, index) {
-                        final item = displayItems[index];
-                        if (item is SingleProjectDisplayItem) {
-                          return _buildSingleProjectRow(item.project);
-                        } else if (item is GroupedProjectDisplayItem) {
-                          return _buildGroupWidget(item);
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                ],
-              ),
+            final projectsCard = ProjectsCard(
+              key: ValueKey('projects-${profile.login}'),
+              allProjects: allProjects,
             );
 
             final skillsChart =
@@ -190,91 +134,15 @@ class _ProfileCardState extends State<ProfileCard> {
     );
   }
 
-  List<ProjectDisplayItem> _groupProjects(List<ProjectItem> allProjects) {
-    final cppProjects =
-        allProjects.where((p) => p.name.startsWith('CPP Module')).toList();
-    final pythonProjects =
-        allProjects.where((p) => p.name.startsWith('Piscine Python')).toList();
-    final djangoProjects =
-        allProjects.where((p) => p.name.startsWith('Piscine Django')).toList();
-    final examProjects =
-        allProjects.where((p) => p.name.startsWith('Exam')).toList();
+  // --- Header sombre avec avatar, nom, login et présence cluster ---
 
-    final groupedNames = [
-      ...cppProjects.map((p) => p.name),
-      ...pythonProjects.map((p) => p.name),
-      ...djangoProjects.map((p) => p.name),
-      ...examProjects.map((p) => p.name),
-    ];
-
-    final otherProjects =
-        allProjects.where((p) => !groupedNames.contains(p.name)).toList();
-
-    cppProjects.sort((a, b) => a.name.compareTo(b.name));
-    pythonProjects.sort((a, b) => a.name.compareTo(b.name));
-    djangoProjects.sort((a, b) => a.name.compareTo(b.name));
-    examProjects.sort((a, b) => a.name.compareTo(b.name));
-
-    DateTime getLatestCreate(List<ProjectItem> list) {
-      if (list.isEmpty) return DateTime.fromMillisecondsSinceEpoch(0);
-      return list
-          .map((p) => p.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0))
-          .reduce((a, b) => a.isAfter(b) ? a : b);
-    }
-
-    final List<GroupedProjectDisplayItem> groups = [];
-    if (cppProjects.isNotEmpty) {
-      groups.add(GroupedProjectDisplayItem(
-          groupName: "C++ Modules",
-          projects: cppProjects,
-          referenceDate: getLatestCreate(cppProjects)));
-    }
-    if (pythonProjects.isNotEmpty) {
-      groups.add(GroupedProjectDisplayItem(
-          groupName: "Piscine Python",
-          projects: pythonProjects,
-          referenceDate: getLatestCreate(pythonProjects)));
-    }
-    if (djangoProjects.isNotEmpty) {
-      groups.add(GroupedProjectDisplayItem(
-          groupName: "Piscine Django",
-          projects: djangoProjects,
-          referenceDate: getLatestCreate(djangoProjects)));
-    }
-    if (examProjects.isNotEmpty) {
-      groups.add(GroupedProjectDisplayItem(
-          groupName: "Examens",
-          projects: examProjects,
-          referenceDate: getLatestCreate(examProjects)));
-    }
-
-    final List<SingleProjectDisplayItem> singles =
-        otherProjects.map((p) => SingleProjectDisplayItem(p)).toList();
-
-    final List<ProjectDisplayItem> combined = [
-      ...groups,
-      ...singles,
-    ];
-
-    combined.sort((a, b) {
-      final dateA = a is GroupedProjectDisplayItem
-          ? a.referenceDate
-          : ((a as SingleProjectDisplayItem).project.createdAt ??
-              DateTime.fromMillisecondsSinceEpoch(0));
-      final dateB = b is GroupedProjectDisplayItem
-          ? b.referenceDate
-          : ((b as SingleProjectDisplayItem).project.createdAt ??
-              DateTime.fromMillisecondsSinceEpoch(0));
-      return dateB.compareTo(dateA);
-    });
-
-    return combined;
-  }
-
-  // --- Header sombre avec avatar, nom et login ---
-
-  Widget _buildHeaderCard(String displayName, String login, String campus,
-      String? avatarUrl, int levelInt) {
+  Widget _buildHeaderCard(UserProfile profile) {
+    final String displayName = profile.displayName;
+    final String login = profile.login;
+    final String campus = profile.campus;
+    final String? avatarUrl = profile.avatarUrl;
+    final String? location = profile.location;
+    final bool isOnline = location != null;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -284,7 +152,7 @@ class _ProfileCardState extends State<ProfileCard> {
       ),
       child: Row(
         children: [
-          _buildAvatar(avatarUrl),
+          _buildAvatar(avatarUrl, isOnline),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -299,13 +167,29 @@ class _ProfileCardState extends State<ProfileCard> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  login,
-                  style: AppText.mono(
-                    fontSize: 13,
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        login,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.mono(
+                          fontSize: 13,
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Vrai statut : la pastille + le libellé reflètent la
+                    // présence sur un poste du cluster (champ location).
+                    StatusPill(
+                      label: isOnline ? 'EN LIGNE' : 'HORS LIGNE',
+                      color: isOnline
+                          ? AppColors.success
+                          : AppColors.mutedLight,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -328,6 +212,31 @@ class _ProfileCardState extends State<ProfileCard> {
                     ),
                   ],
                 ),
+                // Poste occupé quand connu (ex. "En ce moment : c1r2s3").
+                if (location != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.computer_rounded,
+                        size: 13,
+                        color: AppColors.success,
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'En ce moment : $location',
+                          overflow: TextOverflow.ellipsis,
+                          style: AppText.mono(
+                            fontSize: 11.5,
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -336,24 +245,57 @@ class _ProfileCardState extends State<ProfileCard> {
     );
   }
 
-  Widget _buildAvatar(String? avatarUrl) {
+  Widget _buildAvatar(String? avatarUrl, bool isOnline) {
     return Container(
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: AppColors.primary, width: 2),
       ),
-      child: ClipOval(
-        child: avatarUrl != null
-            ? Image.network(
-                avatarUrl,
-                width: 68,
-                height: 68,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    _buildAvatarPlaceholder(),
-              )
-            : _buildAvatarPlaceholder(),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          ClipOval(
+            child: avatarUrl != null
+                ? Image.network(
+                    avatarUrl,
+                    width: 68,
+                    height: 68,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _buildAvatarPlaceholder(),
+                  )
+                : _buildAvatarPlaceholder(),
+          ),
+          // Pastille de présence : verte sur un poste du cluster
+          // (location non null), grise sinon.
+          Positioned(
+            right: -1,
+            bottom: -1,
+            child: Container(
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.card,
+                border: Border.all(color: AppColors.card, width: 2),
+              ),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isOnline ? AppColors.success : AppColors.mutedLight,
+                  boxShadow: [
+                    if (isOnline)
+                      BoxShadow(
+                        color: AppColors.success.withValues(alpha: 0.7),
+                        blurRadius: 6,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -457,6 +399,7 @@ class _ProfileCardState extends State<ProfileCard> {
     required String value,
     required String unit,
     required String label,
+    required IconData icon,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
@@ -464,14 +407,30 @@ class _ProfileCardState extends State<ProfileCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: AppText.mono(
-              fontSize: 10,
-              color: AppColors.muted,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1.2,
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(icon, size: 14, color: AppColors.primary),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppText.mono(
+                    fontSize: 10,
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           Text.rich(
@@ -497,171 +456,6 @@ class _ProfileCardState extends State<ProfileCard> {
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  // --- Projets ---
-
-  Widget _buildMark(bool isValidated, String markStr, {double fontSize = 12}) {
-    final color = isValidated ? AppColors.success : AppColors.danger;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          isValidated ? Icons.check_rounded : Icons.close_rounded,
-          color: color,
-          size: fontSize + 3,
-        ),
-        const SizedBox(width: 4),
-        Text(
-          markStr,
-          style: AppText.mono(
-            fontSize: fontSize,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSingleProjectRow(ProjectItem project) {
-    final isValidated = project.validated == true;
-    final markStr = project.finalMark?.toString() ?? '-';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 9),
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: AppColors.divider, width: 0.75),
-        ),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              project.name,
-              overflow: TextOverflow.ellipsis,
-              style: AppText.body(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w500,
-                color: AppColors.dark,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          _buildMark(isValidated, markStr),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGroupWidget(GroupedProjectDisplayItem groupItem) {
-    final isExpanded = _expandedGroups.contains(groupItem.groupName);
-    final validatedCount =
-        groupItem.projects.where((p) => p.validated == true).length;
-    final totalCount = groupItem.projects.length;
-
-    return Container(
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: AppColors.divider, width: 0.75),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(6),
-            onTap: () {
-              setState(() {
-                if (isExpanded) {
-                  _expandedGroups.remove(groupItem.groupName);
-                } else {
-                  _expandedGroups.add(groupItem.groupName);
-                }
-              });
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 9),
-              child: Row(
-                children: [
-                  AnimatedRotation(
-                    turns: isExpanded ? 0.25 : 0.0,
-                    duration: const Duration(milliseconds: 180),
-                    child: const Icon(
-                      Icons.chevron_right_rounded,
-                      color: AppColors.mutedLight,
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      groupItem.groupName,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppText.body(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.dark,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    "$validatedCount/$totalCount",
-                    style: AppText.mono(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: validatedCount == totalCount
-                          ? AppColors.success
-                          : AppColors.muted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          AnimatedCrossFade(
-            duration: const Duration(milliseconds: 200),
-            sizeCurve: Curves.easeOut,
-            crossFadeState: isExpanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            firstChild: const SizedBox(width: double.infinity),
-            secondChild: Column(
-              children: groupItem.projects
-                  .map((p) => _buildSubProjectRow(p))
-                  .toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSubProjectRow(ProjectItem project) {
-    final isValidated = project.validated == true;
-    final markStr = project.finalMark?.toString() ?? '-';
-
-    return Padding(
-      padding: const EdgeInsets.only(left: 22, top: 2, bottom: 7),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              project.name,
-              overflow: TextOverflow.ellipsis,
-              style: AppText.body(
-                fontSize: 12.5,
-                color: AppColors.muted,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          _buildMark(isValidated, markStr, fontSize: 11),
         ],
       ),
     );
@@ -737,22 +531,6 @@ class _RenderMeasureSize extends RenderProxyBox {
   }
 }
 
-// Display Items for Projects list
-abstract class ProjectDisplayItem {}
-
-class SingleProjectDisplayItem extends ProjectDisplayItem {
-  final ProjectItem project;
-  SingleProjectDisplayItem(this.project);
-}
-
-class GroupedProjectDisplayItem extends ProjectDisplayItem {
-  final String groupName;
-  final List<ProjectItem> projects;
-  final DateTime referenceDate;
-
-  GroupedProjectDisplayItem({
-    required this.groupName,
-    required this.projects,
-    required this.referenceDate,
-  });
-}
+// Les types d'affichage (projets simples / groupés) vivent dans
+// projects_card.dart ; profile_card les utilise via son import en tête
+// de fichier au lieu d'une réexportation (interdite après une classe).

@@ -152,64 +152,14 @@ class _LoginPageState extends State<LoginPage>
                         ),
                         const SizedBox(height: 56),
 
-                        // Bouton "Se connecter avec 42"
+                        // CTA principal : composant partagé du design system.
                         SizedBox(
                           width: 260,
-                          height: 56,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color:
-                                      AppColors.primary.withValues(alpha: 0.30),
-                                  blurRadius: 22,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _loginWith42,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
-                                disabledBackgroundColor:
-                                    AppColors.primary.withValues(alpha: 0.5),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                      height: 22,
-                                      width: 22,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                          Colors.white,
-                                        ),
-                                      ),
-                                    )
-                                  : Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(Icons.login_rounded,
-                                            size: 19),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          'Se connecter avec 42',
-                                          style: AppText.body(
-                                            fontSize: 15.5,
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                            ),
+                          child: PrimaryButton(
+                            label: 'Se connecter avec 42',
+                            icon: Icons.login_rounded,
+                            isLoading: _isLoading,
+                            onPressed: _isLoading ? null : _loginWith42,
                           ),
                         ),
                         const SizedBox(height: 28),

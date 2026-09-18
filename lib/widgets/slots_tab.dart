@@ -52,6 +52,9 @@ class _SlotsTabState extends State<SlotsTab> {
   bool _slotsUnavailable = false;
   String? _errorMessage;
 
+  /// Filtre d'affichage des créneaux du jour : 0 tous, 1 libres, 2 réservés.
+  int _dayFilter = 0;
+
   late final List<DateTime> _calendarDays;
   DateTime _selectedDay = _dateOnly(DateTime.now());
   final ScrollController _calendarScrollController = ScrollController();
@@ -226,85 +229,176 @@ class _SlotsTabState extends State<SlotsTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSummaryCard(),
-        const SizedBox(height: 24),
-        _buildCalendarHeader(),
-        _buildCalendarStrip(),
-        const SizedBox(height: 24),
-        _buildDayContent(),
-      ],
+    // Pull-to-refresh natif : les onglets Profil/Recherche sont des colonnes
+    // non scrollables, mais les créneaux méritent un rechargement gestuel.
+    return RefreshIndicator(
+      color: AppColors.primary,
+      backgroundColor: AppColors.cardElevated,
+      onRefresh: _loadData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSummaryCard(),
+            const SizedBox(height: 24),
+            _buildCalendarHeader(),
+            _buildCalendarStrip(),
+            const SizedBox(height: 24),
+            _buildDayContent(),
+            // Espace pour que le dernier slot ne soit pas masqué et que
+            // le RefreshIndicator ait toujours une zone à tirer.
+            const SizedBox(height: 120),
+          ],
+        ),
+      ),
     );
   }
 
-  /// Carte résumé : points de correction disponibles, ressources nécessaires
-  /// pour réserver des évaluations sur l'intra.
+  /// Carte résumé : points de correction + compteur de disponibilités à
+  /// venir (libres / réservées). Les chiffres se mettent à jour après
+  /// chaque chargement, création ou suppression.
   Widget _buildSummaryCard() {
+    final now = DateTime.now();
+    final upcoming = _slots
+        .where((s) => s.endAt.toLocal().isAfter(now))
+        .toList();
+    final freeCount = upcoming.where((s) => !s.isBooked).length;
+    final bookedCount = upcoming.length - freeCount;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: AppCard.decoration(),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.primarySoft,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.handshake_outlined,
-              color: AppColors.primary,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'POINTS DE CORRECTION',
-                  style: AppText.mono(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.muted,
-                    letterSpacing: 1.5,
-                  ),
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
+                child: const Icon(
+                  Icons.handshake_outlined,
+                  color: AppColors.primary,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${widget.myProfile.correctionPoints}',
+                      'POINTS DE CORRECTION',
                       style: AppText.mono(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.dark,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.muted,
+                        letterSpacing: 1.5,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'disponibles',
-                      style: AppText.body(
-                        fontSize: 13,
-                        color: AppColors.muted,
-                      ),
+                    const SizedBox(height: 4),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          '${widget.myProfile.correctionPoints}',
+                          style: AppText.mono(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.dark,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'disponibles',
+                          style: AppText.body(
+                            fontSize: 13,
+                            color: AppColors.muted,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              // CTA compact : la proposition reste accessible sans scroller.
+              _CompactProposeButton(
+                busy: _isLoading || _isSubmitting,
+                onPressed: _handleCreateSlot,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: AppColors.divider),
+          const SizedBox(height: 12),
+          // Compteurs de disponibilités à venir (temps réel local).
+          Row(
+            children: [
+              Expanded(
+                child: _summaryStat(
+                  value: '${upcoming.length}',
+                  label: 'CRÉNEAUX À VENIR',
+                ),
+              ),
+              Container(width: 1, height: 30, color: AppColors.divider),
+              Expanded(
+                child: _summaryStat(
+                  value: '$freeCount',
+                  label: 'LIBRES',
+                  valueColor: AppColors.success,
+                ),
+              ),
+              Container(width: 1, height: 30, color: AppColors.divider),
+              Expanded(
+                child: _summaryStat(
+                  value: '$bookedCount',
+                  label: 'RÉSERVÉS',
+                  valueColor: AppColors.primary,
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
+  Widget _summaryStat({
+    required String value,
+    required String label,
+    Color valueColor = AppColors.dark,
+  }) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: AppText.mono(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: valueColor,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          style: AppText.mono(
+            fontSize: 9,
+            fontWeight: FontWeight.w600,
+            color: AppColors.muted,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// En-tête du calendrier : le CTA « Proposer » vit désormais dans la
+  /// carte résumé (toujours visible) ; ici ne reste que l'actualisation.
   Widget _buildCalendarHeader() {
     return Row(
       children: [
@@ -316,33 +410,6 @@ class _SlotsTabState extends State<SlotsTab> {
               fontWeight: FontWeight.w600,
               color: AppColors.muted,
               letterSpacing: 2,
-            ),
-          ),
-        ),
-        Tooltip(
-          message: 'Nouveau créneau',
-          child: TextButton.icon(
-            onPressed:
-                (_isLoading || _isSubmitting) ? null : _handleCreateSlot,
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              visualDensity: VisualDensity.compact,
-            ),
-            icon: _isSubmitting
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.add_rounded, size: 18),
-            label: Text(
-              'Proposer',
-              style: AppText.body(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary,
-              ),
             ),
           ),
         ),
@@ -510,24 +577,12 @@ class _SlotsTabState extends State<SlotsTab> {
               style: AppText.body(fontSize: 14, color: AppColors.muted),
             ),
             const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _loadData,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 0,
-              ),
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: Text(
-                'Réessayer',
-                style: AppText.body(fontWeight: FontWeight.w600),
+            SizedBox(
+              width: 220,
+              child: PrimaryButton(
+                label: 'Réessayer',
+                icon: Icons.refresh_rounded,
+                onPressed: _loadData,
               ),
             ),
           ],
@@ -552,6 +607,42 @@ class _SlotsTabState extends State<SlotsTab> {
         const SizedBox(height: 14),
         _buildSlotsSection(slots),
       ],
+    );
+  }
+
+  /// Crénaux du jour après application du filtre Tous / Libres / Réservés.
+  List<CorrectionSlot> _filteredDaySlots(List<CorrectionSlot> slots) {
+    return switch (_dayFilter) {
+      1 => slots.where((s) => !s.isBooked).toList(),
+      2 => slots.where((s) => s.isBooked).toList(),
+      _ => slots,
+    };
+  }
+
+  Widget _dayFilterChip(int value, String label) {
+    final selected = _dayFilter == value;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => setState(() => _dayFilter = value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : AppColors.cardElevated,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.hairline,
+          ),
+        ),
+        child: Text(
+          label,
+          style: AppText.mono(
+            fontSize: 11,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected ? AppColors.background : AppColors.darkSoft,
+          ),
+        ),
+      ),
     );
   }
 
@@ -581,10 +672,21 @@ class _SlotsTabState extends State<SlotsTab> {
   }
 
   Widget _buildSlotsSection(List<CorrectionSlot> slots) {
+    final visible = _filteredDaySlots(slots);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Mes disponibilités', slots.length),
+        _buildSectionTitle('Mes disponibilités', visible.length),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            _dayFilterChip(0, 'Tous'),
+            _dayFilterChip(1, 'Libres'),
+            _dayFilterChip(2, 'Réservés'),
+          ],
+        ),
         const SizedBox(height: 12),
         if (_slotsUnavailable)
           const _EmptyHint(
@@ -593,10 +695,14 @@ class _SlotsTabState extends State<SlotsTab> {
                 'L\'API 42 ne renvoie pas tes créneaux (bug connu côté '
                 'intra) ; ceux créés ici restent visibles.',
           )
-        else if (slots.isEmpty)
-          const _EmptyHint(message: 'Aucune disponibilité ce jour-là.')
+        else if (visible.isEmpty)
+          _EmptyHint(
+            message: _dayFilter == 0
+                ? 'Aucune disponibilité ce jour-là.'
+                : 'Aucun créneau dans ce filtre ce jour-là.',
+          )
         else
-          ...slots.map(_buildSlotCard),
+          ...visible.map(_buildSlotCard),
       ],
     );
   }
@@ -604,10 +710,10 @@ class _SlotsTabState extends State<SlotsTab> {
   Widget _buildSlotCard(CorrectionSlot slot) {
     final bool isPast = slot.endAt.toLocal().isBefore(DateTime.now());
     final bool canDelete = !slot.isBooked && !isPast;
+    final bool canSwipe = canDelete && !_isSubmitting;
 
-    return Container(
+    final card = Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: AppCard.decoration(),
       child: Row(
@@ -623,11 +729,13 @@ class _SlotsTabState extends State<SlotsTab> {
           ),
           const Spacer(),
           if (slot.isBooked)
-            Text(
-              'réservé',
-              style: AppText.mono(fontSize: 11.5, color: AppColors.primary),
-            )
-          else if (canDelete)
+            const StatusPill(label: 'RÉSERVÉ', color: AppColors.primary)
+          else if (isPast)
+            const StatusPill(label: 'PASSÉ', color: AppColors.muted)
+          else
+            const StatusPill(label: 'LIBRE', color: AppColors.success),
+          if (canDelete) ...[
+            const SizedBox(width: 8),
             IconButton(
               tooltip: 'Supprimer',
               onPressed: () async {
@@ -637,7 +745,40 @@ class _SlotsTabState extends State<SlotsTab> {
               color: AppColors.muted,
               visualDensity: VisualDensity.compact,
             ),
+          ],
         ],
+      ),
+    );
+
+    // Swipe-to-delete natif sur les créneaux supprimables ; les autres
+    // restent des cartes statiques (pas de Dismissible fantôme).
+    if (!canSwipe) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: card,
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Dismissible(
+        key: ValueKey('slot-${slot.id}'),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 18),
+          decoration: BoxDecoration(
+            color: AppColors.dangerSoft,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.danger),
+          ),
+          child: const Icon(
+            Icons.delete_outline_rounded,
+            color: AppColors.danger,
+          ),
+        ),
+        confirmDismiss: (_) => _confirmDeleteSlot(slot),
+        onDismissed: (_) => _deleteSlot(slot),
+        child: card,
       ),
     );
   }
@@ -720,6 +861,78 @@ class _SlotsTabState extends State<SlotsTab> {
       );
     }
     _loadData();
+  }
+}
+
+/// Bouton compact « Proposer » du header Slots : même dégradé que le
+/// [PrimaryButton] mais en pilule, avec état de chargement intégré.
+class _CompactProposeButton extends StatelessWidget {
+  final bool busy;
+  final VoidCallback onPressed;
+
+  const _CompactProposeButton({required this.busy, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Nouveau créneau',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: busy ? null : onPressed,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 150),
+          opacity: busy ? 0.55 : 1,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              gradient: busy ? null : AppColors.primaryGradient,
+              color: busy ? AppColors.cardElevated : null,
+              borderRadius: BorderRadius.circular(20),
+              border: busy
+                  ? Border.all(color: AppColors.hairline)
+                  : null,
+              boxShadow: busy
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.35),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (busy)
+                  const SizedBox(
+                    width: 13,
+                    height: 13,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  const Icon(
+                    Icons.add_rounded,
+                    size: 16,
+                    color: AppColors.background,
+                  ),
+                const SizedBox(width: 6),
+                Text(
+                  'Proposer',
+                  style: AppText.body(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: busy
+                        ? AppColors.mutedLight
+                        : AppColors.background,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

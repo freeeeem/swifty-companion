@@ -65,25 +65,10 @@ class ProfileTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            ElevatedButton.icon(
+            PrimaryButton(
+              label: 'Réessayer',
+              icon: Icons.refresh_rounded,
               onPressed: onRetry,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 0,
-              ),
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: Text(
-                "Réessayer",
-                style: AppText.body(fontWeight: FontWeight.w600),
-              ),
             ),
           ],
         ),
