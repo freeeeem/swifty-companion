@@ -13,6 +13,13 @@
 migrate_working_dir/
 .env
 
+# Build artifacts
+*.ipa
+*.apk
+*.aab
+/android/build/
+/ios/build/
+
 # IntelliJ related
 *.iml
 *.ipr
@@ -48,7 +55,9 @@ app.*.map.json
 .metadata
 
 # Sync conflict files (iCloud, Dropbox, etc.)
-* 2.*
-* [0-9].*
+# Motifs volontairement précis : éviter les jokers larges (* 2.*, * [0-9].*)
+# qui masqueraient des fichiers légitimes.
+*.conflicted copy*
 * (Conflict)*
-* conflicted copy*
+*(Conflit)*
+*[[:space:]][0-9]*
