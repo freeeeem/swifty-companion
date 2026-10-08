@@ -110,14 +110,23 @@ class _LoginPageState extends State<LoginPage>
                   ),
                   const SizedBox(height: 40),
                   // CTA principal : composant partagé du design system.
-                  SizedBox(
-                    width: 260,
-                    child: PrimaryButton(
-                      label: 'Se connecter avec 42',
-                      icon: Icons.login_rounded,
-                      isLoading: _isLoading,
-                      onPressed: _isLoading ? null : _loginWith42,
-                    ),
+                  // Largeur capée à 260 mais qui rétrécit sur mobile étroit
+                  // (320 px - 64 px de padding = 256 dispo : 260 débordait).
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final double w = constraints.maxWidth < 260
+                          ? constraints.maxWidth
+                          : 260.0;
+                      return SizedBox(
+                        width: w,
+                        child: PrimaryButton(
+                          label: 'Se connecter avec 42',
+                          icon: Icons.login_rounded,
+                          isLoading: _isLoading,
+                          onPressed: _isLoading ? null : _loginWith42,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

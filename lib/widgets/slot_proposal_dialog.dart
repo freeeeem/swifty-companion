@@ -22,12 +22,20 @@ class SlotProposalDialog extends StatefulWidget {
   const SlotProposalDialog({super.key});
 
   /// Ouvre le dialog et retourne la proposition (null si annulé).
+  /// Margeresponsive : 24 px sur téléphone étroit pour que le calendrier
+  /// respire au lieu de toucher les bords.
   static Future<SlotProposal?> show(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final inset = screenWidth < 420 ? 16.0 : 40.0;
     return showDialog<SlotProposal>(
       context: context,
-      builder: (_) => const Dialog(
+      builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
-        child: SlotProposalDialog(),
+        insetPadding: EdgeInsets.symmetric(
+          horizontal: inset,
+          vertical: 24,
+        ),
+        child: const SlotProposalDialog(),
       ),
     );
   }
@@ -215,11 +223,12 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
             ),
           ),
         ),
+        // Zone tactile élargie (44 px mini) pour fermer au doigt.
         GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () => Navigator.pop(context),
           child: const Padding(
-            padding: EdgeInsets.all(4),
+            padding: EdgeInsets.all(10),
             child: Icon(Icons.close_rounded, size: 20, color: AppColors.muted),
           ),
         ),
@@ -267,11 +276,12 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
   }
 
   Widget _buildMonthArrow(IconData icon, bool enabled, VoidCallback onTap) {
+    // 44 px de zone tactile mini (reco mobile), même si l'icône reste à 22.
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: enabled ? onTap : null,
       child: Padding(
-        padding: const EdgeInsets.all(4),
+        padding: const EdgeInsets.all(11),
         child: Icon(
           icon,
           size: 22,
@@ -440,7 +450,8 @@ class _SlotProposalDialogState extends State<SlotProposalDialog> {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        height: 34,
+        // 40 px tactiles (34 px avant : trop juste au pouce sur mobile).
+        height: 40,
         width: width,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         alignment: Alignment.center,

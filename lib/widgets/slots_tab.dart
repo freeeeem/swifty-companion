@@ -9,14 +9,36 @@ import 'slot_proposal_dialog.dart';
 // Noms de jours et de mois en français, pour éviter d'ajouter une
 // dépendance (intl) juste pour du formatage de dates.
 const List<String> _weekdaysShort = [
-  'LUN', 'MAR', 'MER', 'JEU', 'VEN', 'SAM', 'DIM',
+  'LUN',
+  'MAR',
+  'MER',
+  'JEU',
+  'VEN',
+  'SAM',
+  'DIM',
 ];
 const List<String> _weekdaysLong = [
-  'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche',
+  'Lundi',
+  'Mardi',
+  'Mercredi',
+  'Jeudi',
+  'Vendredi',
+  'Samedi',
+  'Dimanche',
 ];
 const List<String> _monthsLong = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+  'janvier',
+  'février',
+  'mars',
+  'avril',
+  'mai',
+  'juin',
+  'juillet',
+  'août',
+  'septembre',
+  'octobre',
+  'novembre',
+  'décembre',
 ];
 
 bool _isSameDay(DateTime a, DateTime b) =>
@@ -28,6 +50,74 @@ const String _knownSlotIdsKey = 'slots_tab_known_slot_ids';
 
 String _formatTime(DateTime d) =>
     '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+/// Physique de défilement qui aimante le calendrier sur une cellule : au
+/// relâchement, la bande s'arrête toujours sur un jour entier au lieu de
+/// s'immobiliser entre deux cellules (ce qui laissait un jour à moitié
+/// visible et rendait la lecture du mois confuse).
+///
+/// `itemExtent` est le pas complet (cellule + marge) : c'est ce pas qui
+/// sert de grille d'aimantation, donc il doit correspondre exactement au
+/// pas réel du `ListView` (cf. [_SlotsTabState._dayCellWidth]).
+class _SnapToItemScrollPhysics extends ScrollPhysics {
+  final double itemExtent;
+
+  const _SnapToItemScrollPhysics({required this.itemExtent, super.parent});
+
+  @override
+  _SnapToItemScrollPhysics applyTo(ScrollPhysics? ancestor) =>
+      _SnapToItemScrollPhysics(
+        itemExtent: itemExtent,
+        parent: buildParent(ancestor),
+      );
+
+  @override
+  Simulation? createBallisticSimulation(
+    ScrollMetrics position,
+    double velocity,
+  ) {
+    // Hors des bornes (rubber-band iOS) : on délègue entièrement au
+    // parent, pas de snap — sinon le rebond de bord « accroche » sur une
+    // cellule au lieu de nimble.
+    if (position.outOfRange) {
+      return super.createBallisticSimulation(position, velocity);
+    }
+    // Sans dimension de contenu, il n'y a pas de grille à aimanter.
+    if (!position.hasContentDimensions) {
+      return super.createBallisticSimulation(position, velocity);
+    }
+
+    final double current = position.pixels;
+    // On vise la cellule la plus proche, en tenant compte de la vitesse
+    // de lancer : un geste rapide doit avancer d'une cellule de plus.
+    final double projected = current + velocity * 0.15;
+    final double target =
+        (projected / itemExtent).round().clamp(0.0, double.infinity) *
+        itemExtent;
+
+    final double clamped = target.clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    // Déjà aligné sur la cellule : on laisse la simulation par défaut
+    // gérer la fin de geste (inertie naturelle) plutôt que de forcer un
+    // aller-retour qui n'aurait rien à corriger.
+    if ((clamped - current).abs() < 0.5) {
+      return super.createBallisticSimulation(position, velocity);
+    }
+
+    return ScrollSpringSimulation(
+      // Ressort par défaut de ScrollPhysics : amorti, sans dépassement.
+      spring,
+      current,
+      clamped,
+      velocity,
+      // Tolérance relâchée : arrêt franc sur la cellule, sans micro-
+      // ajustement qui tremble à la fin du geste.
+      tolerance: const Tolerance(velocity: 40, distance: 0.5),
+    );
+  }
+}
 
 /// Onglet affichant les disponibilités de correction proposées par
 /// l'utilisateur connecté, organisées autour d'un calendrier de jours à venir.
@@ -142,7 +232,8 @@ class _SlotsTabState extends State<SlotsTab> {
       // 1) l'endpoint nominal, 2) /v2/me/slots, 3) l'index filtré par les
       // IDs des slots créés via l'app.
       final knownIds = await _loadKnownSlotIds();
-      final rawSlots = await AuthService.getUserSlots(widget.myProfile.id) ??
+      final rawSlots =
+          await AuthService.getUserSlots(widget.myProfile.id) ??
           await AuthService.getMeSlots() ??
           await AuthService.getSlotsByIds(knownIds);
 
@@ -279,10 +370,7 @@ class _SlotsTabState extends State<SlotsTab> {
                   children: [
                     Text(
                       'Points de correction',
-                      style: AppText.body(
-                        fontSize: 12,
-                        color: AppColors.muted,
-                      ),
+                      style: AppText.body(fontSize: 12, color: AppColors.muted),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -317,17 +405,11 @@ class _SlotsTabState extends State<SlotsTab> {
               ),
               Container(width: 1, height: 30, color: AppColors.divider),
               Expanded(
-                child: _summaryStat(
-                  value: '$freeCount',
-                  label: 'Libres',
-                ),
+                child: _summaryStat(value: '$freeCount', label: 'Libres'),
               ),
               Container(width: 1, height: 30, color: AppColors.divider),
               Expanded(
-                child: _summaryStat(
-                  value: '$bookedCount',
-                  label: 'Réservés',
-                ),
+                child: _summaryStat(value: '$bookedCount', label: 'Réservés'),
               ),
             ],
           ),
@@ -336,10 +418,7 @@ class _SlotsTabState extends State<SlotsTab> {
     );
   }
 
-  Widget _summaryStat({
-    required String value,
-    required String label,
-  }) {
+  Widget _summaryStat({required String value, required String label}) {
     return Column(
       children: [
         Text(
@@ -351,13 +430,7 @@ class _SlotsTabState extends State<SlotsTab> {
           ),
         ),
         const SizedBox(height: 2),
-        Text(
-          label,
-          style: AppText.body(
-            fontSize: 12,
-            color: AppColors.muted,
-          ),
-        ),
+        Text(label, style: AppText.body(fontSize: 12, color: AppColors.muted)),
       ],
     );
   }
@@ -403,7 +476,10 @@ class _SlotsTabState extends State<SlotsTab> {
     if (proposal == null || !mounted) return;
 
     setState(() => _isSubmitting = true);
-    final (String? error, CorrectionSlot? created) = await AuthService.createSlot(
+    final (
+      String? error,
+      CorrectionSlot? created,
+    ) = await AuthService.createSlot(
       widget.myProfile.id,
       proposal.beginAt,
       proposal.endAt,
@@ -438,12 +514,24 @@ class _SlotsTabState extends State<SlotsTab> {
     final today = _dateOnly(DateTime.now());
     return SizedBox(
       height: 78,
-      child: ListView.builder(
-        controller: _calendarScrollController,
-        scrollDirection: Axis.horizontal,
-        itemCount: _calendarDays.length,
-        itemBuilder: (context, index) =>
-            _buildDayCell(_calendarDays[index], today),
+      child: ScrollConfiguration(
+        // Le geste de swipe sur la bande ne doit pas déclencher le
+        // overscroll : on neutralise le stretch iOS pour garder des
+        // boundaries franches.
+        behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
+        child: ListView.builder(
+          controller: _calendarScrollController,
+          scrollDirection: Axis.horizontal,
+          physics: _SnapToItemScrollPhysics(
+            itemExtent: _dayCellWidth,
+            // Bouncing à l'intérieur des bornes = l'aimantation peut
+            // ressortir le jour aux extrémités.
+            parent: const BouncingScrollPhysics(),
+          ),
+          itemCount: _calendarDays.length,
+          itemBuilder: (context, index) =>
+              _buildDayCell(_calendarDays[index], today),
+        ),
       ),
     );
   }
@@ -456,9 +544,14 @@ class _SlotsTabState extends State<SlotsTab> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _selectDay(day),
-      child: Container(
+      child: AnimatedContainer(
         width: 54,
         margin: const EdgeInsets.only(right: 8),
+        // Selection / survol animes : avant, le changement de jour etait
+        // un switch sec d'une frame a l'autre, tres perceptible des que
+        // l'on tape plusieurs jours d'affilee.
+        duration: AppMotion.quick,
+        curve: AppMotion.standard,
         decoration: BoxDecoration(
           color: isSelected ? AppColors.dark : AppColors.card,
           borderRadius: BorderRadius.circular(8),
@@ -491,15 +584,17 @@ class _SlotsTabState extends State<SlotsTab> {
               ),
             ),
             const SizedBox(height: 4),
-            Container(
+            // Pastille d'activite : presente/absente, sans saut de hauteur
+            // (on reserve toujours 4 px, la couleur porte l'information).
+            AnimatedContainer(
+              duration: AppMotion.instant,
+              curve: AppMotion.standard,
               width: 4,
               height: 4,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: hasActivity
-                    ? (isSelected
-                        ? AppColors.background
-                        : AppColors.primary)
+                    ? (isSelected ? AppColors.background : AppColors.primary)
                     : Colors.transparent,
               ),
             ),
@@ -557,15 +652,36 @@ class _SlotsTabState extends State<SlotsTab> {
 
     final slots = _slotsForSelectedDay;
 
+    // Le titre et la liste sont rejoués a chaque changement de jour : sans
+    // cle, AnimatedSwitcher ne verrait qu'une mise a jour du meme arbre et
+    // n'animerait rien.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          _formatDayTitle(_selectedDay),
-          style: AppText.body(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppColors.dark,
+        AnimatedSwitcher(
+          duration: AppMotion.quick,
+          switchInCurve: AppMotion.enter,
+          switchOutCurve: AppMotion.exit,
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            // Le titre glisse legerement vers le haut en entrant : on
+            // perçoit le changement de jour sans lire la date.
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.25),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          ),
+          child: Text(
+            _formatDayTitle(_selectedDay),
+            key: ValueKey(_selectedDay),
+            style: AppText.body(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.dark,
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -588,8 +704,13 @@ class _SlotsTabState extends State<SlotsTab> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _dayFilter = value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      child: AnimatedContainer(
+        // La transition donne le retour immédiat "ce filtre est actif" ;
+        // avant, le changement de chip etait instantane.
+        duration: AppMotion.instant,
+        curve: AppMotion.standard,
+        // Même hauteur tactile que les chips projets (~34 px).
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
           color: selected ? AppColors.dark : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
@@ -653,7 +774,14 @@ class _SlotsTabState extends State<SlotsTab> {
                 : 'Aucun créneau dans ce filtre ce jour-là.',
           )
         else
-          ...visible.map(_buildSlotCard),
+          // Cascade : chaque créneau entre 50 ms apres le precedent, ce qui
+          // donne du relief a la liste au lieu du "pop" d'un bloc entier.
+          for (int i = 0; i < visible.length; i++)
+            StaggeredReveal(
+              key: ValueKey('slot-${visible[i].id}'),
+              delay: Duration(milliseconds: 40 + i * 50),
+              child: _buildSlotCard(visible[i]),
+            ),
       ],
     );
   }
@@ -669,32 +797,41 @@ class _SlotsTabState extends State<SlotsTab> {
       decoration: AppCard.decoration(),
       child: Row(
         children: [
-          Text(
-            '${_formatTime(slot.beginAt.toLocal())} — '
-            '${_formatTime(slot.endAt.toLocal())}',
-            style: AppText.body(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w500,
-              color: AppColors.dark,
+          Flexible(
+            child: Text(
+              '${_formatTime(slot.beginAt.toLocal())} — '
+              '${_formatTime(slot.endAt.toLocal())}',
+              overflow: TextOverflow.ellipsis,
+              style: AppText.body(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w500,
+                color: AppColors.dark,
+              ),
             ),
           ),
-          const Spacer(),
+          const SizedBox(width: 10),
+          // « Réservé » en gris (pas en blanc) : le blanc est désormais
+          // l'accent des CTA, une pastille blanche serait illisible.
           if (slot.isBooked)
-            const StatusPill(label: 'Réservé', color: AppColors.primary)
+            const StatusPill(label: 'Réservé', color: AppColors.muted)
           else if (isPast)
             const StatusPill(label: 'Passé', color: AppColors.muted)
           else
             const StatusPill(label: 'Libre', color: AppColors.success),
           if (canDelete) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
+            // Corbeille 40 px tactiles (l'IconButton compact faisait ~24 px).
             IconButton(
               tooltip: 'Supprimer',
+              constraints: const BoxConstraints(
+                minWidth: 40,
+                minHeight: 40,
+              ),
               onPressed: () async {
                 if (await _confirmDeleteSlot(slot)) _deleteSlot(slot);
               },
               icon: const Icon(Icons.delete_outline_rounded, size: 19),
               color: AppColors.muted,
-              visualDensity: VisualDensity.compact,
             ),
           ],
         ],
@@ -704,16 +841,18 @@ class _SlotsTabState extends State<SlotsTab> {
     // Swipe-to-delete natif sur les créneaux supprimables ; les autres
     // restent des cartes statiques (pas de Dismissible fantôme).
     if (!canSwipe) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: card,
-      );
+      return Padding(padding: const EdgeInsets.only(bottom: 10), child: card);
     }
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Dismissible(
         key: ValueKey('slot-${slot.id}'),
         direction: DismissDirection.endToStart,
+        // movementDuration aligne le suivi du doigt sur la meme constante
+        // que le reste de l'app, et resizeDuration anime le recomblement de
+        // la place liberee par la carte supprimee.
+        resizeDuration: AppMotion.quick,
+        movementDuration: AppMotion.quick,
         background: Container(
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.only(right: 18),
@@ -755,10 +894,7 @@ class _SlotsTabState extends State<SlotsTab> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Annuler',
-              style: AppText.body(color: AppColors.muted),
-            ),
+            child: Text('Annuler', style: AppText.body(color: AppColors.muted)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
@@ -815,7 +951,8 @@ class _SlotsTabState extends State<SlotsTab> {
   }
 }
 
-/// Bouton compact « Proposer » : fond accent uni, texte blanc, coins 8px.
+/// Bouton compact « Proposer » : fond blanc uni, texte noir, coins 8px.
+/// Hauteur tactile 44 px mini (reco mobile) pour un tap fiable au pouce.
 class _CompactProposeButton extends StatelessWidget {
   final bool busy;
   final VoidCallback onPressed;
@@ -832,10 +969,9 @@ class _CompactProposeButton extends StatelessWidget {
         child: Opacity(
           opacity: busy ? 0.55 : 1,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
             decoration: BoxDecoration(
-              color:
-                  busy ? AppColors.cardElevated : AppColors.primary,
+              color: busy ? AppColors.cardElevated : AppColors.primary,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -851,7 +987,7 @@ class _CompactProposeButton extends StatelessWidget {
                   const Icon(
                     Icons.add_rounded,
                     size: 16,
-                    color: Colors.white,
+                    color: AppColors.background,
                   ),
                 const SizedBox(width: 6),
                 Text(
@@ -861,7 +997,7 @@ class _CompactProposeButton extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                     color: busy
                         ? AppColors.mutedLight
-                        : Colors.white,
+                        : AppColors.background,
                   ),
                 ),
               ],

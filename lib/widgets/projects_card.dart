@@ -142,7 +142,9 @@ class _ProjectsCardState extends State<ProjectsCard> {
       behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _statusFilter = value),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        // Hauteur tactile ~34 px : les chips à 6 px verticaux sont trop
+        // fines au doigt sur mobile.
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
           color: selected ? AppColors.dark : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
@@ -166,6 +168,8 @@ class _ProjectsCardState extends State<ProjectsCard> {
     final Color color;
     final String text;
     if (inProgress) {
+      // Point blanc (ex-bleu) : visible sur fond noir, cohérent avec
+      // l'accent monochrome.
       color = AppColors.primary;
       text = 'En cours';
     } else {
@@ -300,9 +304,14 @@ class _ProjectsCardState extends State<ProjectsCard> {
                 style: AppText.body(fontSize: 12, color: AppColors.muted),
               ),
               const Spacer(),
+              // Zones tactiles 40 px : les IconButton compacts (24 px) sont
+              // trop petits au doigt sur mobile.
               IconButton(
                 tooltip: _newestFirst ? 'Trier : recents' : 'Trier : anciens',
-                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(
+                  minWidth: 40,
+                  minHeight: 40,
+                ),
                 onPressed: () => setState(() => _newestFirst = !_newestFirst),
                 icon: Icon(
                   _newestFirst ? Icons.south_rounded : Icons.north_rounded,
@@ -312,7 +321,10 @@ class _ProjectsCardState extends State<ProjectsCard> {
               ),
               IconButton(
                 tooltip: 'Rechercher',
-                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(
+                  minWidth: 40,
+                  minHeight: 40,
+                ),
                 onPressed: _toggleSearch,
                 icon: Icon(
                   _searchOpen ? Icons.close_rounded : Icons.search_rounded,

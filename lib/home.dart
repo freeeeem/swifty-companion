@@ -234,6 +234,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   /// Ouvre le menu du profil juste sous l'avatar (aligné à droite).
+  /// Sur mobile étroit, l'ancre est clampée pour que le menu ne déborde pas.
   Future<void> _showAvatarMenu() async {
     final RenderBox? box =
         _avatarKey.currentContext?.findRenderObject() as RenderBox?;
@@ -242,15 +243,22 @@ class _HomePageState extends State<HomePage> {
     final Offset bottomRight = box.localToGlobal(
       box.size.bottomRight(Offset.zero),
     );
+    final screenWidth = MediaQuery.of(context).size.width;
+    // Le menu fait ~200 px de large : on recule l'ancre si l'écran est
+    // trop étroit pour l'afficher à droite.
+    const menuWidth = 210.0;
+    final double anchorX = bottomRight.dx + menuWidth > screenWidth
+        ? (screenWidth - menuWidth).clamp(8.0, screenWidth - 8.0)
+        : bottomRight.dx;
 
     final String? value = await showMenu<String>(
       context: context,
       // Le point d'ancrage est le coin bas-droit de la zone tactile :
       // le menu s'ouvre en dessous, aligné vers la gauche du point.
       position: RelativeRect.fromLTRB(
-        bottomRight.dx,
+        anchorX,
         bottomRight.dy + 6,
-        bottomRight.dx,
+        anchorX,
         0,
       ),
       color: AppColors.cardElevated,
@@ -261,7 +269,7 @@ class _HomePageState extends State<HomePage> {
       items: [
         PopupMenuItem<String>(
           value: 'logout',
-          height: 44,
+          height: 48,
           child: Row(
             children: [
               const Icon(Icons.logout, size: 18, color: AppColors.danger),

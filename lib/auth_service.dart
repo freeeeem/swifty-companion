@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/foundation.dart';
 import 'models/correction_models.dart';
+import 'models/user_profile.dart';
 
 class AuthService {
   // Clés d'API 42 chargées dynamiquement depuis le fichier .env
@@ -255,6 +256,86 @@ class AuthService {
       Uri.parse('https://api.intra.42.fr/v2/users/$login'),
       '/v2/users/$login',
     );
+  }
+
+  // ==========================================================================
+  // Recherche approximative de login
+  // ==========================================================================
+
+  /// Recherche les logins correspondant **partiellement** à [query].
+  ///
+  /// L'API 42 distingue deux notions qu'il ne faut surtout pas confondre :
+  /// - `GET /v2/users/:login` : correspondance **exacte** (404 sinon) ;
+  /// - `filter[login]=` : également **exact** (les jokers SQL `%` renvoient []) ;
+  /// - `search=` (sans crochet) : **silencieusement ignoré** — vérifié en
+  ///   direct, la requête renvoie la même première page pour « rezett », « bk »
+  ///   et même une chaîne absurde.
+  ///
+  /// En revanche `search[login]=` fonctionne et fait une vraie **sous-chaîne**
+  /// côté serveur : « rezett » ramène `lrezette` et `grezette`, « lrez » ramène
+  /// `lrezette` et `lreznak-`. C'est le seul paramètre qui donne des résultats
+  /// partiels — d'où son usage ici. (L'API liste les champs cherchables dans
+  /// son message d'erreur : `login` est le seul qui nous intéresse,
+  /// `displayname` n'en fait pas partie.)
+  ///
+  /// Le tri de pertinence reste fait côté client : le serveur ne classe pas par
+  /// rapport à la saisie, il renvoie les correspondants dans l'ordre du
+  /// répertoire.
+  static Future<List<UserCandidate>> searchUsersByLogin(String query) async {
+    final String needle = query.trim().toLowerCase();
+    if (needle.isEmpty) return const [];
+
+    final users = await _apiGetList(
+      Uri.https('api.intra.42.fr', '/v2/users', {
+        'search[login]': needle,
+        // 100 = maximum accepté par l'API. On ne demande pas plus : les
+        // candidats au-delà sont de toute façon tronqués par _maxCandidates.
+        'page[size]': '$_pageSize',
+      }),
+      '/v2/users?search[login]=$needle',
+    );
+    if (users == null) return const [];
+
+    final List<UserCandidate> matches = users
+        .whereType<Map<String, dynamic>>()
+        .where((u) => (u['login'] as String? ?? '').toLowerCase()
+            .contains(needle))
+        .map(UserCandidate.fromJson)
+        .toList();
+
+    matches.sort(_rankCandidates(needle));
+    return matches.take(_maxCandidates).toList();
+  }
+
+  /// Nombre de logins demandés par page (100 = maximum accepté par l'API).
+  static const int _pageSize = 100;
+
+  /// Plafond de résultats retournés : une saisie très courte (« a ») correspond
+  /// à plus de 100 000 logins, la liste doit rester lisible.
+  static const int _maxCandidates = 20;
+
+  /// Trie les candidats par pertinence décroissante.
+  ///
+  /// Ordre : correspondance exacte, puis préfixe, puis sous-chaîne ; à chaque
+  /// étage le login le plus court gagne (« lrez » avant « lrezette-x »), et
+  /// l'égalité renvoie l'ordre alphabétique, donc un tri stable.
+  static int Function(UserCandidate, UserCandidate) _rankCandidates(
+    String needle,
+  ) {
+    int tier(UserCandidate c) {
+      final String login = c.login.toLowerCase();
+      if (login == needle) return 0;
+      if (login.startsWith(needle)) return 1;
+      return 2;
+    }
+
+    return (a, b) {
+      final int byTier = tier(a).compareTo(tier(b));
+      if (byTier != 0) return byTier;
+      final int byLength = a.login.length.compareTo(b.login.length);
+      if (byLength != 0) return byLength;
+      return a.login.toLowerCase().compareTo(b.login.toLowerCase());
+    };
   }
 
   /// Requête GET authentifiée renvoyant une liste JSON (endpoints "collection").

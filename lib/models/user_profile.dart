@@ -36,6 +36,35 @@ class ProjectItem {
   }
 }
 
+/// Candidat renvoyé par la recherche approximative (endpoint `/v2/users`).
+///
+/// Volontairement distinct de [UserProfile] : l'endpoint de collection
+/// renvoie une version "light" des utilisateurs — pas de `campus`, pas de
+/// `cursus_users`, donc pas de niveau ni de compétences. On ne peut donc pas
+/// construire un [UserProfile] avec, et surtout on n'en a pas besoin : cette
+/// carte ne sert qu'à proposer un choix, le profil complet est rechargé via
+/// `/v2/users/:login` au clic.
+class UserCandidate {
+  final String login;
+  final String displayName;
+  final String? avatarUrl;
+
+  const UserCandidate({
+    required this.login,
+    required this.displayName,
+    this.avatarUrl,
+  });
+
+  factory UserCandidate.fromJson(Map<String, dynamic> json) {
+    final String? avatarUrl = json['image']?['versions']?['medium'];
+    return UserCandidate(
+      login: json['login'] ?? 'N/A',
+      displayName: json['displayname'] ?? 'Inconnu',
+      avatarUrl: avatarUrl is String && avatarUrl.isNotEmpty ? avatarUrl : null,
+    );
+  }
+}
+
 class UserProfile {
   final int id;
   final String displayName;

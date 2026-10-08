@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/user_profile.dart';
 import '../theme.dart';
 import 'projects_card.dart';
@@ -23,74 +24,103 @@ class _ProfileCardState extends State<ProfileCard> {
     final int levelPercent = profile.levelPercent;
     final int wallet = profile.wallet;
     final int correctionsPoints = profile.correctionPoints;
-    final List<ProjectItem> allProjects = profile.projects
-        .where((p) => p.finalMark != null || p.status == 'in_progress')
-        .toList()
-      ..sort((a, b) => (b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0))
-          .compareTo(a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0)));
+    final List<ProjectItem> allProjects =
+        profile.projects
+            .where((p) => p.finalMark != null || p.status == 'in_progress')
+            .toList()
+          ..sort(
+            (a, b) => (b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0))
+                .compareTo(
+                  a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0),
+                ),
+          );
+
+    // Cascade descendante : chaque bloc apparaît 55 ms après le précédent.
+    // Sans elle, les 6 cartes s'affichent d'un bloc et la page « claque » à
+    // l'ouverture. L'écart est volontairement faible pour ne pas retarder
+    // l'accès aux informations.
+    Widget cascade(int index, Widget child) => StaggeredReveal(
+      delay: Duration(milliseconds: index * 55),
+      child: child,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         const SizedBox(height: 8),
-        _buildHeaderCard(profile),
+        cascade(0, _buildHeaderCard(profile)),
         const SizedBox(height: 12),
-        _buildLevelCard(level, levelInt, levelPercent),
+        cascade(1, _buildLevelCard(level, levelInt, levelPercent)),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                value: '$wallet',
-                unit: '₳',
-                label: 'Wallet',
-                icon: Icons.account_balance_wallet_outlined,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildStatCard(
-                value: '$correctionsPoints',
-                unit: 'pts',
-                label: 'Correction',
-                icon: Icons.check_outlined,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: AppCard.decoration(),
-          child: Column(
+        cascade(
+          2,
+          Row(
             children: [
-              _buildInfoRow(
-                label: 'Email',
-                value: email,
+              Expanded(
+                child: _buildStatCard(
+                  value: '$wallet',
+                  unit: '₳',
+                  label: 'Wallet',
+                  icon: Icons.account_balance_wallet_outlined,
+                ),
               ),
-              const Divider(height: 20, color: AppColors.divider),
-              _buildInfoRow(
-                label: 'Campus',
-                value: profile.campus,
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  value: '$correctionsPoints',
+                  unit: 'pts',
+                  label: 'Correction',
+                  icon: Icons.check_outlined,
+                ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 12),
-        // Projets puis compétences : deux blocs indépendants, chacun à
-        // hauteur naturelle. Le radar a une hauteur fixe (voir
-        // SkillsRadarChart) donc la recherche ne le fait plus bouger.
-        ProjectsCard(
-          key: ValueKey('projects-${profile.login}'),
-          allProjects: allProjects,
+        cascade(
+          3,
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: AppCard.decoration(),
+            child: Column(
+              children: [
+                _buildInfoRow(label: 'Login', value: profile.login, mono: true),
+                const Divider(height: 20, color: AppColors.divider),
+                // L'ID 42 (utile pour l'API / les slots) : affiché en mono,
+                // copiable au tap comme le poste ci-dessus.
+                _buildInfoRow(
+                  label: 'ID',
+                  value: '${profile.id}',
+                  mono: true,
+                  copyable: true,
+                ),
+                const Divider(height: 20, color: AppColors.divider),
+                _buildInfoRow(label: 'Email', value: email),
+                const Divider(height: 20, color: AppColors.divider),
+                _buildInfoRow(label: 'Campus', value: profile.campus),
+              ],
+            ),
+          ),
         ),
         const SizedBox(height: 12),
-        SkillsRadarChart(skills: profile.skills),
+        // Projets puis compétences : deux blocs indépendants, chacun à
+        // hauteur naturelle. Ni l'un ni l'autre ne dépend de la recherche
+        // dans l'autre, donc ouvrir la recherche projets ne décale plus
+        // la carte compétences.
+        cascade(
+          4,
+          ProjectsCard(
+            key: ValueKey('projects-${profile.login}'),
+            allProjects: allProjects,
+          ),
+        ),
+        const SizedBox(height: 12),
+        cascade(5, SkillsRadarChart(skills: profile.skills)),
       ],
     );
   }
 
-  // --- Header simple : avatar, nom, login et présence cluster ---
+  // --- Header : avatar, nom, login, présence cluster + poste bien visible ---
 
   Widget _buildHeaderCard(UserProfile profile) {
     final String displayName = profile.displayName;
@@ -103,6 +133,7 @@ class _ProfileCardState extends State<ProfileCard> {
       padding: const EdgeInsets.all(16),
       decoration: AppCard.decoration(),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildAvatar(avatarUrl, isOnline),
           const SizedBox(width: 14),
@@ -113,28 +144,29 @@ class _ProfileCardState extends State<ProfileCard> {
                 Text(
                   displayName,
                   overflow: TextOverflow.ellipsis,
-                  style: AppText.heading(
-                    fontSize: 17,
-                    color: AppColors.dark,
-                  ),
+                  style: AppText.heading(fontSize: 17, color: AppColors.dark),
                 ),
-                const SizedBox(height: 2),
-                Row(
+                const SizedBox(height: 6),
+                // Wrap plutôt que Row : sur mobile étroit (320 px), un login
+                // long + la pastille ne tiennent pas sur une ligne. Avant, le
+                // Flexible écrasait le login ; maintenant la pastille passe
+                // sous le login au lieu de déborder.
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Flexible(
-                      child: Text(
-                        login,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.body(
-                          fontSize: 13,
-                          color: AppColors.muted,
-                          fontWeight: FontWeight.w400,
-                        ),
+                    Text(
+                      login,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppText.body(
+                        fontSize: 13,
+                        color: AppColors.muted,
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    // Vrai statut : pastille mate + libellé sobre reflétant
-                    // la présence sur un poste du cluster (champ location).
+                    // Statut bien visible : pastille teintée (vert pâle quand
+                    // en ligne) reflétant la présence sur un poste du cluster.
                     StatusPill(
                       label: isOnline ? 'En ligne' : 'Hors ligne',
                       color: isOnline
@@ -143,30 +175,60 @@ class _ProfileCardState extends State<ProfileCard> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        campus,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.body(
-                          fontSize: 12,
-                          color: AppColors.muted,
-                        ),
+                const SizedBox(height: 8),
+                Text(
+                  campus,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style: AppText.body(fontSize: 12, color: AppColors.muted),
+                ),
+                // Poste occupé (ex. "c1r2s3") : puce mono bien lisible avec
+                // icône PC, au lieu du petit texte gris "Sur ..." d'avant.
+                if (location != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.successSoft,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.success.withValues(alpha: 0.35),
                       ),
                     ),
-                  ],
-                ),
-                // Poste occupé quand connu (ex. "Sur c1r2s3").
-                if (location != null) ...[
-                  const SizedBox(height: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.computer_rounded,
+                          size: 14,
+                          color: AppColors.success,
+                        ),
+                        const SizedBox(width: 7),
+                        Flexible(
+                          child: Text(
+                            location,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppText.mono(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.dark,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 4),
                   Text(
-                    'Sur $location',
-                    overflow: TextOverflow.ellipsis,
+                    'Aucun poste en ce moment',
                     style: AppText.body(
                       fontSize: 12,
-                      color: AppColors.muted,
+                      color: AppColors.mutedLight,
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
                 ],
@@ -179,43 +241,51 @@ class _ProfileCardState extends State<ProfileCard> {
   }
 
   Widget _buildAvatar(String? avatarUrl, bool isOnline) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.hairline, width: 1.5),
-          ),
-          child: ClipOval(
-            child: avatarUrl != null
-                ? Image.network(
-                    avatarUrl,
-                    width: 64,
-                    height: 64,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        _buildAvatarPlaceholder(),
-                  )
-                : _buildAvatarPlaceholder(),
-          ),
-        ),
-        // Pastille de présence mate, sans lueur.
-        Positioned(
-          right: -1,
-          bottom: -1,
-          child: Container(
-            width: 16,
-            height: 16,
+    return Semantics(
+      label: isOnline ? 'En ligne' : 'Hors ligne',
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isOnline ? AppColors.success : AppColors.mutedLight,
-              border: Border.all(color: AppColors.card, width: 2.5),
+              // Anneau vert quand en ligne : le statut se lit même sans lire
+              // la pastille (utile sur mobile où l'œil survole vite).
+              border: Border.all(
+                color: isOnline ? AppColors.success : AppColors.hairline,
+                width: 1.5,
+              ),
+            ),
+            child: ClipOval(
+              child: avatarUrl != null
+                  ? Image.network(
+                      avatarUrl,
+                      width: 64,
+                      height: 64,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildAvatarPlaceholder(),
+                    )
+                  : _buildAvatarPlaceholder(),
             ),
           ),
-        ),
-      ],
+          // Pastille de présence mate, sans lueur.
+          Positioned(
+            right: -1,
+            bottom: -1,
+            child: Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isOnline ? AppColors.success : AppColors.mutedLight,
+                border: Border.all(color: AppColors.card, width: 2.5),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -263,15 +333,13 @@ class _ProfileCardState extends State<ProfileCard> {
             ],
           ),
           const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: (level % 1).clamp(0.0, 1.0),
-              minHeight: 4,
-              backgroundColor: AppColors.cardElevated,
-              valueColor:
-                  const AlwaysStoppedAnimation<Color>(AppColors.primary),
-            ),
+          // Track lisible (AppProgressBar) + remplissage anime : avant, la
+          // portion vide se confondait avec la carte et la barre paraissait
+          // "coupée" au niveau du fond.
+          AppProgressBar(
+            value: (level % 1).clamp(0.0, 1.0),
+            color: AppColors.primary,
+            height: 4,
           ),
         ],
       ),
@@ -342,7 +410,50 @@ class _ProfileCardState extends State<ProfileCard> {
   Widget _buildInfoRow({
     required String label,
     required String value,
+    bool mono = false,
+    bool copyable = false,
   }) {
+    final textStyle = mono
+        ? AppText.mono(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppColors.dark,
+          )
+        : AppText.body(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w500,
+            color: AppColors.dark,
+          );
+    // Copiable : tap = copie presse-papier + feedback ; appui long =
+    // sélection manuelle (utile pour un email ou un campus long).
+    final valueWidget = copyable
+        ? Builder(
+            builder: (context) => GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _copyValue(context, label, value),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Flexible(
+                    child: Text(
+                      value,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: textStyle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(
+                    Icons.copy_rounded,
+                    size: 13,
+                    color: AppColors.mutedLight,
+                  ),
+                ],
+              ),
+            ),
+          )
+        : SelectableText(value, textAlign: TextAlign.right, style: textStyle);
     return Row(
       children: [
         Text(
@@ -353,21 +464,23 @@ class _ProfileCardState extends State<ProfileCard> {
             fontWeight: FontWeight.w400,
           ),
         ),
+        const SizedBox(width: 12),
         const Spacer(),
-        Flexible(
-          child: Text(
-            value,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.right,
-            style: AppText.body(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w500,
-              color: AppColors.dark,
-            ),
-          ),
-        ),
+        Flexible(flex: 3, child: Align(
+          alignment: Alignment.centerRight,
+          child: valueWidget,
+        )),
       ],
     );
+  }
+
+  /// Copie une valeur (ID, login…) + confirme via SnackBar du langage courant.
+  Future<void> _copyValue(BuildContext context, String label, String value) async {
+    await Clipboard.setData(ClipboardData(text: value));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text('$label copié : $value')));
   }
 }
 
