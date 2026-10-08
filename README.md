@@ -96,19 +96,6 @@ lib/
 
 ---
 
-## 🧪 Tests & qualité
-
-```bash
-flutter analyze     # Analyse statique (lints flutter_lints)
-flutter test        # Tests unitaires & widgets
-```
-
-Le projet vise **zéro warning** à l'analyse et une couverture de tests sur les
-modèles et les widgets clés (profil, recherche, radar de compétences, physique
-de défilement des créneaux).
-
----
-
 ## 📝 Notes
 
 - Le fichier `DEADLINES.md` documente le *Pace System* de 42 et sert de
