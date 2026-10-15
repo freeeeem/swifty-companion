@@ -2,9 +2,19 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Little 42 Companion (Chrome CORS Bypass)",
+      "name": "Little 42 Companion (Chrome debug, port 8080)",
       "request": "launch",
       "type": "dart",
+      "args": [
+        "--web-port",
+        "8080"
+      ]
+    },
+    {
+      "name": "Little 42 Companion (web-server, ton Chrome habituel)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "web-server",
       "args": [
         "--web-port",
         "8080"
