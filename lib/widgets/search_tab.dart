@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../auth_service.dart';
 import '../models/user_profile.dart';
 import '../theme.dart';
+import 'avatar_image.dart';
 import 'profile_card.dart';
 
 class SearchTab extends StatefulWidget {
@@ -233,13 +234,12 @@ class _SearchTabState extends State<SearchTab> {
     final String? avatarUrl = candidate.avatarUrl;
     return ClipOval(
       child: avatarUrl != null
-          ? Image.network(
-              avatarUrl,
+          ? AvatarImage(
+              url: avatarUrl,
               width: 40,
               height: 40,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  _buildCandidateAvatarFallback(),
+              fallback: _buildCandidateAvatarFallback(),
             )
           : _buildCandidateAvatarFallback(),
     );

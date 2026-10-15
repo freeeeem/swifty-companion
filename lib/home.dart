@@ -4,6 +4,7 @@ import 'auth_service.dart';
 import 'login.dart';
 import 'models/user_profile.dart';
 import 'theme.dart';
+import 'widgets/avatar_image.dart';
 import 'widgets/profile_tab.dart';
 import 'widgets/search_tab.dart';
 import 'widgets/slots_tab.dart';
@@ -217,10 +218,10 @@ class _HomePageState extends State<HomePage> {
                   padding: const EdgeInsets.all(2),
                   child: ClipOval(
                     child: profile?.avatarUrl != null
-                        ? Image.network(
-                            profile!.avatarUrl!,
+                        ? AvatarImage(
+                            url: profile!.avatarUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => _avatarFallback(),
+                            fallback: _avatarFallback(),
                           )
                         : _avatarFallback(),
                   ),

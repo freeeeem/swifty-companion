@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/user_profile.dart';
 import '../theme.dart';
+import 'avatar_image.dart';
 import 'projects_card.dart';
 import 'skills_radar_chart.dart';
 
@@ -250,13 +251,12 @@ class _ProfileCardState extends State<ProfileCard> {
             ),
             child: ClipOval(
               child: avatarUrl != null
-                  ? Image.network(
-                      avatarUrl,
+                  ? AvatarImage(
+                      url: avatarUrl,
                       width: 64,
                       height: 64,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          _buildAvatarPlaceholder(),
+                      fallback: _buildAvatarPlaceholder(),
                     )
                   : _buildAvatarPlaceholder(),
             ),
