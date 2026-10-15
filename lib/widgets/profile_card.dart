@@ -86,15 +86,6 @@ class _ProfileCardState extends State<ProfileCard> {
               children: [
                 _buildInfoRow(label: 'Login', value: profile.login, mono: true),
                 const Divider(height: 20, color: AppColors.divider),
-                // L'ID 42 (utile pour l'API / les slots) : affiché en mono,
-                // copiable au tap comme le poste ci-dessus.
-                _buildInfoRow(
-                  label: 'ID',
-                  value: '${profile.id}',
-                  mono: true,
-                  copyable: true,
-                ),
-                const Divider(height: 20, color: AppColors.divider),
                 _buildInfoRow(label: 'Email', value: email),
                 const Divider(height: 20, color: AppColors.divider),
                 _buildInfoRow(label: 'Campus', value: profile.campus),
@@ -416,7 +407,7 @@ class _ProfileCardState extends State<ProfileCard> {
     final textStyle = mono
         ? AppText.mono(
             fontSize: 13,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w400,
             color: AppColors.dark,
           )
         : AppText.body(

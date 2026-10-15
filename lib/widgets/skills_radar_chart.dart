@@ -477,12 +477,8 @@ class _SkillsRadarChartState extends State<SkillsRadarChart> {
     );
   }
 
-  /// En-tête : titre, effectif et moyenne.
-  ///
-  /// La moyenne a été ajoutée parce que le radar seul ne dit pas si le
-  /// profil est fort : c'est le seul chiffre qui donne le niveau global.
+  /// En-tête : titre + effectif.
   Widget _header(int total) {
-    final double avg = _parsed.fold<double>(0, (a, s) => a + s.level) / total;
     return Row(
       children: [
         // Le titre est le seul élément élastique : sur un écran étroit ou
@@ -500,16 +496,6 @@ class _SkillsRadarChartState extends State<SkillsRadarChart> {
         Text(
           '$total',
           style: AppText.body(fontSize: 12, color: AppColors.muted),
-        ),
-        const SizedBox(width: 10),
-        // `scaleDown` : la moyenne disparaît proprement sur écran étroit
-        // au lieu de pousser le reste hors du cadre.
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            'moy. ${avg.toStringAsFixed(1)}',
-            style: AppText.mono(fontSize: 11, color: AppColors.mutedLight),
-          ),
         ),
       ],
     );
