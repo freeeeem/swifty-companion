@@ -241,6 +241,16 @@ class AuthService {
     return prefs.getString('access_token') != null;
   }
 
+  /// Token d'accès valide, pour les appels qui ne passent pas par [_apiGet].
+  ///
+  /// C'est le cas du CDN des avatars (`cdn.intra.42.fr`) : il n'accepte plus
+  /// les requêtes anonymes et répond `403` sans en-tête
+  /// `Authorization: Bearer …`. Voir le widget `AvatarImage`.
+  ///
+  /// Même contrat que [_getValidAccessToken] : rafraîchit le token si besoin,
+  /// et retourne `null` s'il n'y a aucune session.
+  static Future<String?> getValidAccessToken() => _getValidAccessToken();
+
   // ==========================================================================
   // Appels API
   // ==========================================================================
